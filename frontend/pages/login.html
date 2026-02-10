@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - 360GatePass</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .spinner {
+      display: none;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #3498db;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      animation: spin 1s linear infinite;
+    }
+
+    .spinner.active {
+      display: inline-block;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .error-text {
+      color: #dc2626;
+      font-size: 0.875rem;
+      margin-top: 0.25rem;
+    }
+
+    .error-input {
+      border-color: #dc2626 !important;
+      background-color: #fef2f2 !important;
+    }
+
+    .success-message {
+      background-color: #d1fae5;
+      color: #065f46;
+      border: 1px solid #6ee7b7;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      margin-bottom: 1.5rem;
+      display: none;
+    }
+
+    .success-message.show {
+      display: block;
+    }
+  </style>
+</head>
+<body class="bg-gray-50">
+  <div class="min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8">
+    <div class="w-full max-w-md bg-white rounded-lg shadow-md p-8">
+      <!-- Header -->
+      <div class="text-center mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">360GatePass</h1>
+        <p class="text-gray-600 mt-2">Guest Access Control System</p>
+      </div>
+
+      <!-- Success Message -->
+      <div id="successMessage" class="success-message">
+        <p id="successText"></p>
+      </div>
+
+      <!-- Error Container -->
+      <div id="errorContainer" class="mb-4">
+        <div id="generalError" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm hidden"></div>
+      </div>
+
+      <!-- Login Form -->
+      <form id="loginForm" class="space-y-6" novalidate>
+        <!-- Email Field -->
+        <div>
+          <label for="email" class="block text-sm font-medium text-gray-700">Email Address</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            placeholder="your@email.com"
+            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 transition"
+            required
+          >
+          <div id="emailError" class="error-text"></div>
+        </div>
+
+        <!-- Password Field -->
+        <div>
+          <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            placeholder="••••••••"
+            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 transition"
+            required
+          >
+          <div id="passwordError" class="error-text"></div>
+        </div>
+
+        <!-- Submit Button -->
+        <button
+          type="submit"
+          id="submitBtn"
+          class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition duration-200 flex items-center justify-center gap-2"
+        >
+          <span id="btnText">Sign In</span>
+          <div id="spinner" class="spinner"></div>
+        </button>
+      </form>
+
+      <!-- Footer -->
+      <div class="mt-6 text-center">
+        <p class="text-gray-600 text-sm">
+          Don't have an account?
+          <a href="register.html" class="text-blue-600 hover:text-blue-700 font-medium">Register here</a>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Validation functions
+    const validateEmail = (email) => {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      return emailRegex.test(email);
+    };
+
+    const getEmailError = (email) => {
+      if (!email) return 'Email is required';
+      if (!validateEmail(email)) return 'Please enter a valid email address';
+      return '';
+    };
+
+    const getPasswordError = (password) => {
+      if (!password) return 'Password is required';
+      return '';
+    };
+
+    // Real-time validation
+    const setupFieldValidation = () => {
+      const emailField = document.getElementById('email');
+      const passwordField = document.getElementById('password');
+
+      emailField.addEventListener('blur', () => {
+        const error = getEmailError(emailField.value);
+        const errorEl = document.getElementById('emailError');
+        errorEl.textContent = error;
+        emailField.classList.toggle('error-input', !!error);
+      });
+
+      emailField.addEventListener('input', () => {
+        const error = getEmailError(emailField.value);
+        const errorEl = document.getElementById('emailError');
+        if (error && emailField.value) {
+          errorEl.textContent = error;
+          emailField.classList.add('error-input');
+        } else {
+          errorEl.textContent = '';
+          emailField.classList.remove('error-input');
+        }
+      });
+
+      passwordField.addEventListener('blur', () => {
+        const error = getPasswordError(passwordField.value);
+        const errorEl = document.getElementById('passwordError');
+        errorEl.textContent = error;
+        passwordField.classList.toggle('error-input', !!error);
+      });
+
+      passwordField.addEventListener('input', () => {
+        const error = getPasswordError(passwordField.value);
+        const errorEl = document.getElementById('passwordError');
+        if (error && passwordField.value) {
+          errorEl.textContent = error;
+          passwordField.classList.add('error-input');
+        } else {
+          errorEl.textContent = '';
+          passwordField.classList.remove('error-input');
+        }
+      });
+    };
+
+    // Validate form before submission
+    const validateForm = () => {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      const errors = {};
+
+      const emailError = getEmailError(email);
+      if (emailError) errors.email = emailError;
+
+      const passwordError = getPasswordError(password);
+      if (passwordError) errors.password = passwordError;
+
+      return errors;
+    };
+
+    // Clear errors
+    const clearErrors = () => {
+      document.getElementById('emailError').textContent = '';
+      document.getElementById('passwordError').textContent = '';
+      document.getElementById('generalError').classList.add('hidden');
+      document.getElementById('generalError').textContent = '';
+      document.getElementById('email').classList.remove('error-input');
+      document.getElementById('password').classList.remove('error-input');
+    };
+
+    // Show general error
+    const showGeneralError = (message) => {
+      const errorEl = document.getElementById('generalError');
+      errorEl.textContent = message;
+      errorEl.classList.remove('hidden');
+    };
+
+    // Set loading state
+    const setLoading = (isLoading) => {
+      const submitBtn = document.getElementById('submitBtn');
+      const spinner = document.getElementById('spinner');
+      const btnText = document.getElementById('btnText');
+
+      submitBtn.disabled = isLoading;
+      if (isLoading) {
+        submitBtn.classList.add('opacity-75', 'cursor-not-allowed');
+        spinner.classList.add('active');
+        btnText.textContent = 'Signing in...';
+      } else {
+        submitBtn.classList.remove('opacity-75', 'cursor-not-allowed');
+        spinner.classList.remove('active');
+        btnText.textContent = 'Sign In';
+      }
+    };
+
+    // Handle form submission
+    const handleLogin = async (e) => {
+      e.preventDefault();
+      clearErrors();
+
+      const validationErrors = validateForm();
+      if (Object.keys(validationErrors).length > 0) {
+        Object.keys(validationErrors).forEach(field => {
+          document.getElementById(`${field}Error`).textContent = validationErrors[field];
+          document.getElementById(field).classList.add('error-input');
+        });
+        return;
+      }
+
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      setLoading(true);
+
+      try {
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ email, password })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          showGeneralError(data.message || 'Login failed. Please try again.');
+          setLoading(false);
+          return;
+        }
+
+        // Store user info in sessionStorage
+        const user = data.user;
+        sessionStorage.setItem('userId', user.id);
+        sessionStorage.setItem('userRole', user.role);
+        sessionStorage.setItem('userName', user.firstName || user.email);
+        sessionStorage.setItem('userEmail', user.email);
+
+        // Show success message
+        const successMsg = document.getElementById('successMessage');
+        const successText = document.getElementById('successText');
+        successText.textContent = `Welcome, ${user.firstName || user.email}! Redirecting...`;
+        successMsg.classList.add('show');
+
+        // Redirect based on role
+        setTimeout(() => {
+          const role = user.role;
+          let redirectUrl = '/dashboard/guest.html'; // Default to guest
+
+          if (role === 'Host') {
+            redirectUrl = '/dashboard/host.html';
+          } else if (role === 'Security') {
+            redirectUrl = '/dashboard/security.html';
+          } else if (role === 'Admin') {
+            redirectUrl = '/dashboard/admin.html';
+          }
+
+          window.location.href = redirectUrl;
+        }, 1500);
+      } catch (error) {
+        showGeneralError('Network error. Please check your connection and try again.');
+        setLoading(false);
+      }
+    };
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      setupFieldValidation();
+      document.getElementById('loginForm').addEventListener('submit', handleLogin);
+    });
+  </script>
+</body>
+</html>
