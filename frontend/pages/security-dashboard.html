@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Security Dashboard - 360GatePass</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .spinner {
+      display: none;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #3498db;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      animation: spin 1s linear infinite;
+    }
+
+    .spinner.active {
+      display: inline-block;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .error-text {
+      color: #dc2626;
+      font-size: 0.875rem;
+      margin-top: 0.25rem;
+    }
+
+    .error-input {
+      border-color: #dc2626 !important;
+      background-color: #fef2f2 !important;
+    }
+
+    .success-message {
+      background-color: #d1fae5;
+      color: #065f46;
+      border: 1px solid #6ee7b7;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      margin-bottom: 1.5rem;
+      display: none;
+    }
+
+    .success-message.show {
+      display: block;
+    }
+
+    .alert-error {
+      background-color: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      margin-bottom: 1.5rem;
+      display: none;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .alert-error.show {
+      display: flex;
+    }
+
+    .alert-close {
+      margin-left: auto;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .loading-skeleton {
+      background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+      background-size: 200% 100%;
+      animation: loading 1.5s infinite;
+    }
+
+    @keyframes loading {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    .pass-code-display {
+      background-color: #f0f9ff;
+      border: 2px solid #0284c7;
+      border-radius: 0.5rem;
+      padding: 1.5rem;
+      text-align: center;
+      margin: 1rem 0;
+    }
+
+    .pass-code-value {
+      font-size: 1.875rem;
+      font-weight: bold;
+      color: #0284c7;
+      font-family: 'Courier New', monospace;
+      letter-spacing: 0.25rem;
+    }
+
+    .copy-button {
+      background-color: #0284c7;
+      color: white;
+      padding: 0.5rem 1rem;
+      border-radius: 0.375rem;
+      border: none;
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: background-color 0.2s ease;
+      margin-top: 0.5rem;
+    }
+
+    .copy-button:hover {
+      background-color: #0369a1;
+    }
+
+    .copy-button.copied {
+      background-color: #16a34a;
+    }
+
+    .table-container {
+      overflow-x: auto;
+    }
+
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .table thead {
+      background-color: #f3f4f6;
+      border-bottom: 2px solid #e5e7eb;
+    }
+
+    .table th {
+      padding: 0.75rem;
+      text-align: left;
+      font-weight: 600;
+      color: #374151;
+      font-size: 0.875rem;
+    }
+
+    .table td {
+      padding: 0.75rem;
+      border-bottom: 1px solid #e5e7eb;
+      color: #1f2937;
+    }
+
+    .table tbody tr:hover {
+      background-color: #f9fafb;
+    }
+
+    .table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .success-badge {
+      display: inline-block;
+      background-color: #dcfce7;
+      color: #166534;
+      padding: 0.375rem 0.75rem;
+      border-radius: 0.375rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+
+    .secondary-button {
+      background-color: #e5e7eb;
+      color: #1f2937;
+      padding: 0.5rem 1rem;
+      border-radius: 0.375rem;
+      border: none;
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: background-color 0.2s ease;
+    }
+
+    .secondary-button:hover {
+      background-color: #d1d5db;
+    }
+
+    .secondary-button:disabled {
+      background-color: #f3f4f6;
+      color: #9ca3af;
+      cursor: not-allowed;
+    }
+
+    .primary-button {
+      background-color: #0284c7;
+      color: white;
+      padding: 0.5rem 1rem;
+      border-radius: 0.375rem;
+      border: none;
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: background-color 0.2s ease;
+    }
+
+    .primary-button:hover {
+      background-color: #0369a1;
+    }
+
+    .primary-button:disabled {
+      background-color: #cbd5e1;
+      color: #64748b;
+      cursor: not-allowed;
+    }
+
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .form-label {
+      display: block;
+      font-weight: 500;
+      color: #1f2937;
+      margin-bottom: 0.5rem;
+      font-size: 0.875rem;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 0.625rem 0.75rem;
+      border: 1px solid #d1d5db;
+      border-radius: 0.375rem;
+      font-size: 0.875rem;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: #0284c7;
+      box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.1);
+    }
+
+    .form-input.error {
+      border-color: #dc2626;
+      background-color: #fef2f2;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: #6b7280;
+    }
+
+    .empty-state-icon {
+      width: 3rem;
+      height: 3rem;
+      color: #d1d5db;
+      margin: 0 auto 1rem;
+    }
+
+    .empty-state-title {
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: #1f2937;
+      margin-bottom: 0.5rem;
+    }
+
+    .empty-state-description {
+      font-size: 0.875rem;
+      color: #6b7280;
+    }
+
+    .success-details {
+      background-color: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 0.375rem;
+      padding: 1rem;
+      margin-top: 1rem;
+      font-size: 0.875rem;
+    }
+
+    .success-details-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.25rem 0;
+    }
+
+    .success-details-label {
+      font-weight: 600;
+      color: #15803d;
+    }
+
+    .success-details-value {
+      color: #166534;
+    }
+
+    .auto-refresh-info {
+      font-size: 0.75rem;
+      color: #6b7280;
+      margin-top: 0.5rem;
+    }
+
+    @media (max-width: 768px) {
+      .section-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .pass-code-value {
+        font-size: 1.5rem;
+      }
+
+      .table {
+        font-size: 0.75rem;
+      }
+
+      .table th,
+      .table td {
+        padding: 0.5rem 0.25rem;
+      }
+    }
+  </style>
+</head>
+<body class="bg-gray-50">
+  <div class="min-h-screen">
+    <!-- Navigation Header -->
+    <nav class="bg-white shadow-sm border-b border-gray-200">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div class="flex justify-between items-center">
+          <div class="flex items-center gap-4">
+            <h1 class="text-2xl font-bold text-gray-900">360GatePass</h1>
+            <span class="text-gray-500 text-sm">Security Dashboard</span>
+          </div>
+          <button id="logoutBtn" class="text-gray-600 hover:text-gray-900 text-sm font-medium transition">
+            Logout
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <!-- Success Message -->
+      <div id="successMessage" class="success-message">
+        <p id="successText"></p>
+      </div>
+
+      <!-- Error Alert -->
+      <div id="errorAlert" class="alert-error">
+        <span id="errorAlertText"></span>
+        <span class="alert-close" onclick="closeErrorAlert()">×</span>
+      </div>
+
+      <!-- Section 1: Approved Visits & Pass Issuance -->
+      <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <h2 class="text-2xl font-bold text-gray-900 mb-6">Approved Visits & Pass Issuance</h2>
+        
+        <div class="table-container">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Guest Name</th>
+                <th>Host Name</th>
+                <th>Visit Date</th>
+                <th>Purpose</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="approvedVisitsBody">
+              <!-- Approved visits will be populated here -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Empty State -->
+        <div id="approvedVisitsEmpty" class="empty-state hidden">
+          <svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <p class="empty-state-title">No Approved Visits</p>
+          <p class="empty-state-description">All approved visits have been issued passes</p>
+        </div>
+
+        <!-- Loading Skeleton -->
+        <div id="approvedVisitsLoading" class="space-y-4 hidden">
+          <div class="loading-skeleton h-16 rounded-lg"></div>
+          <div class="loading-skeleton h-16 rounded-lg"></div>
+        </div>
+
+        <!-- Pass Issuance Modal -->
+        <div id="passModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+          <div class="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
+            <h3 class="text-lg font-bold text-gray-900 mb-4">Issue Pass</h3>
+            
+            <div class="form-group">
+              <label class="form-label">Guest Name</label>
+              <p id="modalGuestName" class="text-gray-700 font-medium"></p>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Host Name</label>
+              <p id="modalHostName" class="text-gray-700 font-medium"></p>
+            </div>
+
+            <div id="passCodeDisplay" class="pass-code-display hidden">
+              <p style="font-size: 0.875rem; color: #4b5563; margin-bottom: 0.5rem;">Your Pass Code</p>
+              <div class="pass-code-value" id="generatedPassCode">000000</div>
+              <button type="button" class="copy-button" id="copyPassBtn">Copy to Clipboard</button>
+            </div>
+
+            <div id="modalLoading" class="flex items-center justify-center gap-2 hidden my-4">
+              <div class="spinner active"></div>
+              <span class="text-gray-600 text-sm">Issuing pass...</span>
+            </div>
+
+            <div class="flex gap-2 justify-end mt-6">
+              <button type="button" id="modalCancelBtn" class="secondary-button">Cancel</button>
+              <button type="button" id="modalConfirmBtn" class="primary-button flex items-center gap-2">
+                <span>Issue Pass</span>
+                <div id="confirmSpinner" class="spinner"></div>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 2: Check-In/Check-Out Interface -->
+      <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <h2 class="text-2xl font-bold text-gray-900 mb-6">Check-In / Check-Out</h2>
+        
+        <div class="max-w-md">
+          <div class="form-group">
+            <label for="passCodeInput" class="form-label">Pass Code *</label>
+            <input 
+              type="text" 
+              id="passCodeInput" 
+              class="form-input" 
+              placeholder="Enter 6-8 digit pass code"
+              autocomplete="off"
+            >
+            <div id="passCodeError" class="error-text"></div>
+          </div>
+
+          <div id="passValidationFeedback" class="hidden">
+            <div id="validationSuccess" class="bg-green-50 border border-green-200 rounded-md p-3 mb-4 hidden">
+              <p class="text-sm text-green-800" id="validationMessage"></p>
+              <div class="success-details mt-2">
+                <div class="success-details-row">
+                  <span class="success-details-label">Guest:</span>
+                  <span class="success-details-value" id="validationGuestName"></span>
+                </div>
+                <div class="success-details-row">
+                  <span class="success-details-label">Host:</span>
+                  <span class="success-details-value" id="validationHostName"></span>
+                </div>
+              </div>
+            </div>
+
+            <div id="validationError" class="bg-red-50 border border-red-200 rounded-md p-3 mb-4 hidden">
+              <p class="text-sm text-red-800" id="validationErrorMessage"></p>
+            </div>
+          </div>
+
+          <div class="flex gap-3">
+            <button 
+              type="button" 
+              id="checkInBtn" 
+              class="primary-button flex-1 flex items-center justify-center gap-2"
+            >
+              <span>Check In</span>
+              <div id="checkInSpinner" class="spinner"></div>
+            </button>
+            <button 
+              type="button" 
+              id="checkOutBtn" 
+              class="primary-button flex-1 flex items-center justify-center gap-2"
+            >
+              <span>Check Out</span>
+              <div id="checkOutSpinner" class="spinner"></div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Success Message for Operations -->
+        <div id="operationSuccess" class="hidden mt-6">
+          <div class="bg-green-50 border border-green-200 rounded-md p-4">
+            <p class="text-sm font-medium text-green-800 mb-3" id="operationMessage"></p>
+            <div class="success-details">
+              <div class="success-details-row">
+                <span class="success-details-label">Guest:</span>
+                <span class="success-details-value" id="opGuestName"></span>
+              </div>
+              <div class="success-details-row">
+                <span class="success-details-label">Host:</span>
+                <span class="success-details-value" id="opHostName"></span>
+              </div>
+              <div class="success-details-row">
+                <span class="success-details-label">Pass Code:</span>
+                <span class="success-details-value" id="opPassCode"></span>
+              </div>
+              <div id="opCheckInTime" class="success-details-row hidden">
+                <span class="success-details-label">Check-In Time:</span>
+                <span class="success-details-value" id="opCheckInValue"></span>
+              </div>
+              <div id="opCheckOutTime" class="success-details-row hidden">
+                <span class="success-details-label">Check-Out Time:</span>
+                <span class="success-details-value" id="opCheckOutValue"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 3: Active Guests Monitor -->
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold text-gray-900">Active Guests Monitor</h2>
+          <button id="manualRefreshBtn" class="text-blue-600 hover:text-blue-700 text-sm font-medium transition flex items-center gap-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+            </svg>
+            Refresh
+          </button>
+        </div>
+
+        <!-- Search Input -->
+        <div class="mb-6">
+          <input 
+            type="text" 
+            id="activeGuestsSearch" 
+            class="form-input" 
+            placeholder="Search by guest name or pass code..."
+          >
+          <p class="auto-refresh-info">Auto-refreshes every 30 seconds</p>
+        </div>
+
+        <!-- Table -->
+        <div class="table-container">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Guest Name</th>
+                <th>Host Name</th>
+                <th>Pass Code</th>
+                <th>Check-In Time</th>
+                <th>Visit Purpose</th>
+              </tr>
+            </thead>
+            <tbody id="activeGuestsBody">
+              <!-- Active guests will be populated here -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Empty State -->
+        <div id="activeGuestsEmpty" class="empty-state hidden">
+          <svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <p class="empty-state-title">No Active Guests</p>
+          <p class="empty-state-description">No guests are currently checked in</p>
+        </div>
+
+        <!-- Loading Skeleton -->
+        <div id="activeGuestsLoading" class="space-y-4 hidden">
+          <div class="loading-skeleton h-16 rounded-lg"></div>
+          <div class="loading-skeleton h-16 rounded-lg"></div>
+          <div class="loading-skeleton h-16 rounded-lg"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/security-dashboard.js"></script>
+</body>
+</html>
