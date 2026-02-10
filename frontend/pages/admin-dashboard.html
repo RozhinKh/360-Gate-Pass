@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - 360GatePass</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .spinner {
+      display: none;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #3498db;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      animation: spin 1s linear infinite;
+    }
+
+    .spinner.active {
+      display: inline-block;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .error-text {
+      color: #dc2626;
+      font-size: 0.875rem;
+      margin-top: 0.25rem;
+    }
+
+    .error-input {
+      border-color: #dc2626 !important;
+      background-color: #fef2f2 !important;
+    }
+
+    .success-message {
+      background-color: #d1fae5;
+      color: #065f46;
+      border: 1px solid #6ee7b7;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      margin-bottom: 1.5rem;
+      display: none;
+    }
+
+    .success-message.show {
+      display: block;
+    }
+
+    .alert-error {
+      background-color: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      margin-bottom: 1.5rem;
+      display: none;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .alert-error.show {
+      display: flex;
+    }
+
+    .alert-close {
+      margin-left: auto;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .loading-skeleton {
+      background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+      background-size: 200% 100%;
+      animation: loading 1.5s infinite;
+    }
+
+    @keyframes loading {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    .table-container {
+      overflow-x: auto;
+    }
+
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .table thead {
+      background-color: #f3f4f6;
+      border-bottom: 2px solid #e5e7eb;
+    }
+
+    .table th {
+      padding: 0.75rem;
+      text-align: left;
+      font-weight: 600;
+      color: #374151;
+      font-size: 0.875rem;
+    }
+
+    .table td {
+      padding: 0.75rem;
+      border-bottom: 1px solid #e5e7eb;
+      color: #1f2937;
+    }
+
+    .table tbody tr:hover {
+      background-color: #f9fafb;
+    }
+
+    .table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .primary-button {
+      background-color: #0284c7;
+      color: white;
+      padding: 0.5rem 1rem;
+      border-radius: 0.375rem;
+      border: none;
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: background-color 0.2s ease;
+    }
+
+    .primary-button:hover {
+      background-color: #0369a1;
+    }
+
+    .primary-button:disabled {
+      background-color: #cbd5e1;
+      color: #64748b;
+      cursor: not-allowed;
+    }
+
+    .secondary-button {
+      background-color: #e5e7eb;
+      color: #1f2937;
+      padding: 0.5rem 1rem;
+      border-radius: 0.375rem;
+      border: none;
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: background-color 0.2s ease;
+    }
+
+    .secondary-button:hover {
+      background-color: #d1d5db;
+    }
+
+    .secondary-button:disabled {
+      background-color: #f3f4f6;
+      color: #9ca3af;
+      cursor: not-allowed;
+    }
+
+    .role-dropdown {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.5rem center;
+      background-size: 1rem 1rem;
+      padding-right: 1.5rem;
+      border: 1px solid #d1d5db;
+      border-radius: 0.375rem;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .role-dropdown:focus {
+      outline: none;
+      border-color: #0284c7;
+      box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.1);
+    }
+
+    .role-dropdown:disabled {
+      background-color: #f3f4f6;
+      color: #9ca3af;
+      cursor: not-allowed;
+    }
+
+    .stat-card {
+      background: white;
+      border-radius: 0.5rem;
+      padding: 1.5rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      border: 1px solid #e5e7eb;
+    }
+
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #0284c7;
+      margin-bottom: 0.5rem;
+    }
+
+    .stat-label {
+      font-size: 0.875rem;
+      color: #6b7280;
+      font-weight: 500;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: #6b7280;
+    }
+
+    .empty-state-icon {
+      width: 3rem;
+      height: 3rem;
+      color: #d1d5db;
+      margin: 0 auto 1rem;
+    }
+
+    .empty-state-title {
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: #1f2937;
+      margin-bottom: 0.5rem;
+    }
+
+    .empty-state-description {
+      font-size: 0.875rem;
+      color: #6b7280;
+    }
+
+    .activity-item {
+      padding: 1rem;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+
+    .activity-item:last-child {
+      border-bottom: none;
+    }
+
+    .activity-content {
+      flex: 1;
+    }
+
+    .activity-type {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #0284c7;
+      text-transform: uppercase;
+      margin-bottom: 0.25rem;
+    }
+
+    .activity-description {
+      font-size: 0.875rem;
+      color: #1f2937;
+      margin-bottom: 0.25rem;
+    }
+
+    .activity-time {
+      font-size: 0.75rem;
+      color: #6b7280;
+    }
+
+    .filter-button {
+      padding: 0.5rem 1rem;
+      border: 1px solid #d1d5db;
+      border-radius: 0.375rem;
+      background-color: white;
+      color: #374151;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .filter-button.active {
+      background-color: #0284c7;
+      color: white;
+      border-color: #0284c7;
+    }
+
+    .filter-button:hover:not(.active) {
+      border-color: #0284c7;
+      color: #0284c7;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 0.625rem 0.75rem;
+      border: 1px solid #d1d5db;
+      border-radius: 0.375rem;
+      font-size: 0.875rem;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: #0284c7;
+      box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.1);
+    }
+
+    @media (max-width: 768px) {
+      .stat-card {
+        padding: 1rem;
+      }
+
+      .stat-value {
+        font-size: 1.5rem;
+      }
+
+      .table {
+        font-size: 0.75rem;
+      }
+
+      .table th,
+      .table td {
+        padding: 0.5rem 0.25rem;
+      }
+
+      .role-dropdown {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        padding-right: 1.25rem;
+      }
+    }
+  </style>
+</head>
+<body class="bg-gray-50">
+  <div class="min-h-screen">
+    <!-- Navigation Header -->
+    <nav class="bg-white shadow-sm border-b border-gray-200">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div class="flex justify-between items-center">
+          <div class="flex items-center gap-4">
+            <h1 class="text-2xl font-bold text-gray-900">360GatePass</h1>
+            <span class="text-gray-500 text-sm">Admin Dashboard</span>
+          </div>
+          <button id="logoutBtn" class="text-gray-600 hover:text-gray-900 text-sm font-medium transition">
+            Logout
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <!-- Success Message -->
+      <div id="successMessage" class="success-message">
+        <p id="successText"></p>
+      </div>
+
+      <!-- Error Alert -->
+      <div id="errorAlert" class="alert-error">
+        <span id="errorAlertText"></span>
+        <span class="alert-close" onclick="closeErrorAlert()">×</span>
+      </div>
+
+      <!-- Statistics Cards Section -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <!-- Total Users -->
+        <div class="stat-card">
+          <div class="stat-value" id="totalUserCount">-</div>
+          <div class="stat-label">Total Users</div>
+        </div>
+
+        <!-- Active Users -->
+        <div class="stat-card">
+          <div class="stat-value" id="activeUserCount">-</div>
+          <div class="stat-label">Active Users</div>
+        </div>
+
+        <!-- Total Visits -->
+        <div class="stat-card">
+          <div class="stat-value" id="totalVisitCount">-</div>
+          <div class="stat-label">Total Visits</div>
+        </div>
+
+        <!-- Active Guests -->
+        <div class="stat-card">
+          <div class="stat-value" id="activeGuestCount">-</div>
+          <div class="stat-label">Active Guests</div>
+        </div>
+      </div>
+
+      <!-- User Management Section -->
+      <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold text-gray-900">User Management</h2>
+          <button id="refreshUsersBtn" class="text-blue-600 hover:text-blue-700 text-sm font-medium transition flex items-center gap-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+            </svg>
+            Refresh
+          </button>
+        </div>
+
+        <!-- Filter Section -->
+        <div class="mb-6 space-y-4">
+          <!-- Search Input -->
+          <div>
+            <label for="searchInput" class="block text-sm font-medium text-gray-700 mb-2">Search by Name or Email</label>
+            <input 
+              type="text" 
+              id="searchInput" 
+              class="form-input" 
+              placeholder="Type name or email..."
+            >
+          </div>
+
+          <!-- Role Filter -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Filter by Role</label>
+            <div class="flex flex-wrap gap-2">
+              <button class="filter-button active" data-role="all">All</button>
+              <button class="filter-button" data-role="Guest">Guest</button>
+              <button class="filter-button" data-role="Host">Host</button>
+              <button class="filter-button" data-role="Security">Security</button>
+              <button class="filter-button" data-role="Admin">Admin</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Users Table -->
+        <div class="table-container">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Role</th>
+                <th>Joined Date</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody">
+              <!-- Users will be populated here -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Empty State -->
+        <div id="usersEmptyState" class="empty-state hidden">
+          <svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.856-1.487M9 20H4v-2a3 3 0 015.856-1.487M15 6a3 3 0 11-6 0 3 3 0 016 0zm6 0a1 1 0 11-2 0 1 1 0 012 0zM5 20a1 1 0 11-2 0 1 1 0 012 0z"></path>
+          </svg>
+          <p class="empty-state-title">No Users Found</p>
+          <p class="empty-state-description">No users match your search or filter criteria</p>
+        </div>
+
+        <!-- Loading Skeleton -->
+        <div id="usersLoadingSkeleton" class="space-y-4 hidden">
+          <div class="loading-skeleton h-16 rounded-lg"></div>
+          <div class="loading-skeleton h-16 rounded-lg"></div>
+          <div class="loading-skeleton h-16 rounded-lg"></div>
+        </div>
+      </div>
+
+      <!-- Activity Log Section -->
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-2xl font-bold text-gray-900 mb-6">Recent Activity</h2>
+
+        <!-- Activity Container -->
+        <div id="activityContainer" class="space-y-0">
+          <!-- Activity items will be populated here -->
+        </div>
+
+        <!-- Empty State -->
+        <div id="activityEmptyState" class="empty-state hidden">
+          <svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <p class="empty-state-title">No Activity</p>
+          <p class="empty-state-description">No recent activity to display</p>
+        </div>
+
+        <!-- Loading Skeleton -->
+        <div id="activityLoadingSkeleton" class="space-y-4 hidden">
+          <div class="loading-skeleton h-12 rounded-lg"></div>
+          <div class="loading-skeleton h-12 rounded-lg"></div>
+          <div class="loading-skeleton h-12 rounded-lg"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // API Base URL
+    const API_BASE = '/api';
+
+    // State management
+    let currentUser = null;
+    let allUsers = [];
+    let filteredUsers = [];
+    let reportData = null;
+    let currentSearchQuery = '';
+    let currentRoleFilter = 'all';
+
+    /**
+     * Initialize the page
+     */
+    const initializePage = async () => {
+      try {
+        // Check authentication and authorization
+        await checkAuthentication();
+        
+        // Load initial data
+        await Promise.all([
+          loadUsers(),
+          loadStatistics()
+        ]);
+
+        // Setup event listeners
+        setupEventListeners();
+      } catch (error) {
+        console.error('Error initializing page:', error);
+        showErrorAlert('Failed to initialize page. Please refresh and try again.');
+      }
+    };
+
+    /**
+     * Check authentication and verify admin role
+     */
+    const checkAuthentication = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/auth/me`, {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.status === 401) {
+          window.location.href = 'login.html';
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        currentUser = data.user;
+
+        // Verify user is admin
+        if (currentUser.role !== 'Admin') {
+          window.location.href = 'login.html';
+          return;
+        }
+      } catch (error) {
+        console.error('Authentication check failed:', error);
+        window.location.href = 'login.html';
+      }
+    };
+
+    /**
+     * Load users from API
+     */
+    const loadUsers = async () => {
+      try {
+        // Show loading state
+        document.getElementById('usersLoadingSkeleton').classList.remove('hidden');
+        document.getElementById('usersTableBody').innerHTML = '';
+        document.getElementById('usersEmptyState').classList.add('hidden');
+
+        const response = await fetch(`${API_BASE}/admin/users`, {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.status === 401) {
+          window.location.href = 'login.html';
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch users: ${response.status}`);
+        }
+
+        const data = await response.json();
+        allUsers = data.users || [];
+
+        // Hide loading state
+        document.getElementById('usersLoadingSkeleton').classList.add('hidden');
+
+        // Apply filters and display
+        applyFilters();
+      } catch (error) {
+        console.error('Error loading users:', error);
+        document.getElementById('usersLoadingSkeleton').classList.add('hidden');
+        document.getElementById('usersEmptyState').classList.remove('hidden');
+        showErrorAlert('Failed to load users. Please try again.');
+      }
+    };
+
+    /**
+     * Load statistics from API
+     */
+    const loadStatistics = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/admin/reports`, {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.status === 401) {
+          window.location.href = 'login.html';
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch statistics: ${response.status}`);
+        }
+
+        const data = await response.json();
+        reportData = data;
+
+        // Update stat cards
+        updateStatistics();
+
+        // Display activity log
+        displayActivityLog();
+      } catch (error) {
+        console.error('Error loading statistics:', error);
+        showErrorAlert('Failed to load statistics. Please try again.');
+      }
+    };
+
+    /**
+     * Update statistics cards
+     */
+    const updateStatistics = () => {
+      if (!reportData || !reportData.statistics) return;
+
+      const { statistics } = reportData;
+
+      // Update user stats
+      document.getElementById('totalUserCount').textContent = statistics.userStats?.total || 0;
+      document.getElementById('activeUserCount').textContent = statistics.userStats?.active || 0;
+
+      // Update visit stats
+      document.getElementById('totalVisitCount').textContent = statistics.visitStats?.total || 0;
+
+      // Update active guests count
+      document.getElementById('activeGuestCount').textContent = statistics.activeGuests?.count || 0;
+    };
+
+    /**
+     * Display activity log
+     */
+    const displayActivityLog = () => {
+      const container = document.getElementById('activityContainer');
+      const emptyState = document.getElementById('activityEmptyState');
+      const loadingSkeleton = document.getElementById('activityLoadingSkeleton');
+
+      if (!reportData || !reportData.statistics || !reportData.statistics.recentActivity) {
+        emptyState.classList.remove('hidden');
+        container.innerHTML = '';
+        return;
+      }
+
+      const activities = reportData.statistics.recentActivity;
+
+      if (activities.length === 0) {
+        emptyState.classList.remove('hidden');
+        container.innerHTML = '';
+        return;
+      }
+
+      loadingSkeleton.classList.add('hidden');
+      emptyState.classList.add('hidden');
+      container.innerHTML = '';
+
+      activities.forEach(activity => {
+        const item = createActivityItem(activity);
+        container.appendChild(item);
+      });
+    };
+
+    /**
+     * Create activity item element
+     */
+    const createActivityItem = (activity) => {
+      const div = document.createElement('div');
+      div.className = 'activity-item';
+
+      const typeLabel = activity.type.replace('_', ' ').toUpperCase();
+      const timestamp = formatDate(activity.timestamp);
+
+      div.innerHTML = `
+        <div class="activity-content">
+          <div class="activity-type">${escapeHtml(typeLabel)}</div>
+          <div class="activity-description">${escapeHtml(activity.description)}</div>
+          <div class="activity-time">${timestamp}</div>
+        </div>
+      `;
+
+      return div;
+    };
+
+    /**
+     * Format date for display
+     */
+    const formatDate = (dateString) => {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffMs = now - date;
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+
+      if (diffMins < 1) {
+        return 'Just now';
+      } else if (diffMins < 60) {
+        return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+      } else if (diffHours < 24) {
+        return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+      } else if (diffDays < 7) {
+        return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+      } else {
+        return date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        });
+      }
+    };
+
+    /**
+     * Apply search and role filters
+     */
+    const applyFilters = () => {
+      let filtered = [...allUsers];
+
+      // Apply search filter
+      if (currentSearchQuery) {
+        const query = currentSearchQuery.toLowerCase();
+        filtered = filtered.filter(user => {
+          const name = user.name?.toLowerCase() || '';
+          const email = user.email?.toLowerCase() || '';
+          return name.includes(query) || email.includes(query);
+        });
+      }
+
+      // Apply role filter
+      if (currentRoleFilter !== 'all') {
+        filtered = filtered.filter(user => user.role === currentRoleFilter);
+      }
+
+      filteredUsers = filtered;
+      renderUsersTable();
+    };
+
+    /**
+     * Render users table
+     */
+    const renderUsersTable = () => {
+      const tbody = document.getElementById('usersTableBody');
+      const emptyState = document.getElementById('usersEmptyState');
+
+      if (filteredUsers.length === 0) {
+        tbody.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+      tbody.innerHTML = '';
+
+      filteredUsers.forEach(user => {
+        const row = createUserRow(user);
+        tbody.appendChild(row);
+      });
+    };
+
+    /**
+     * Create user table row
+     */
+    const createUserRow = (user) => {
+      const tr = document.createElement('tr');
+
+      const joinedDate = new Date(user.created_at).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+
+      // Check if this is the current admin user
+      const isCurrentUser = currentUser && currentUser.id === user.id;
+
+      let roleDropdown;
+      if (isCurrentUser) {
+        // Disabled dropdown for current admin
+        roleDropdown = `<span class="text-gray-600">${escapeHtml(user.role)}</span>`;
+      } else {
+        // Enabled dropdown for other users
+        roleDropdown = `
+          <select class="role-dropdown" data-user-id="${user.id}" data-user-name="${escapeHtml(user.name)}">
+            <option value="Guest" ${user.role === 'Guest' ? 'selected' : ''}>Guest</option>
+            <option value="Host" ${user.role === 'Host' ? 'selected' : ''}>Host</option>
+            <option value="Security" ${user.role === 'Security' ? 'selected' : ''}>Security</option>
+            <option value="Admin" ${user.role === 'Admin' ? 'selected' : ''}>Admin</option>
+          </select>
+        `;
+      }
+
+      tr.innerHTML = `
+        <td>${escapeHtml(user.name)}</td>
+        <td>${escapeHtml(user.email)}</td>
+        <td>${escapeHtml(user.phone || 'N/A')}</td>
+        <td>${roleDropdown}</td>
+        <td>${joinedDate}</td>
+      `;
+
+      // Add event listener to dropdown if not current user
+      if (!isCurrentUser) {
+        const dropdown = tr.querySelector('.role-dropdown');
+        dropdown.addEventListener('change', (e) => handleRoleChange(e, user));
+      }
+
+      return tr;
+    };
+
+    /**
+     * Handle role change
+     */
+    const handleRoleChange = async (e, user) => {
+      const newRole = e.target.value;
+      const oldRole = user.role;
+
+      if (newRole === oldRole) {
+        return; // No change
+      }
+
+      // Prevent further changes during update
+      e.target.disabled = true;
+
+      try {
+        const response = await fetch(`${API_BASE}/admin/users/${user.id}/role`, {
+          method: 'PATCH',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ role: newRole })
+        });
+
+        if (response.status === 401) {
+          window.location.href = 'login.html';
+          return;
+        }
+
+        if (response.status === 403) {
+          // Cannot change own role
+          e.target.value = oldRole;
+          e.target.disabled = false;
+          showErrorAlert('You cannot change your own role.');
+          return;
+        }
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.message || 'Failed to update role');
+        }
+
+        // Update local user object
+        user.role = newRole;
+        
+        // Show success message
+        showSuccessMessage(`${user.name}'s role updated to ${newRole}`);
+
+        // Re-render the table to reflect changes
+        renderUsersTable();
+      } catch (error) {
+        console.error('Error updating role:', error);
+        
+        // Revert to old role
+        e.target.value = oldRole;
+        e.target.disabled = false;
+        
+        showErrorAlert(error.message || 'Failed to update user role. Please try again.');
+      }
+    };
+
+    /**
+     * Setup event listeners
+     */
+    const setupEventListeners = () => {
+      // Search input
+      document.getElementById('searchInput').addEventListener('input', (e) => {
+        currentSearchQuery = e.target.value;
+        applyFilters();
+      });
+
+      // Role filter buttons
+      document.querySelectorAll('.filter-button').forEach(button => {
+        button.addEventListener('click', () => {
+          // Remove active class from all buttons
+          document.querySelectorAll('.filter-button').forEach(b => {
+            b.classList.remove('active');
+          });
+          
+          // Add active class to clicked button
+          button.classList.add('active');
+          
+          // Update filter and rerender
+          currentRoleFilter = button.getAttribute('data-role');
+          applyFilters();
+        });
+      });
+
+      // Refresh users button
+      document.getElementById('refreshUsersBtn').addEventListener('click', () => {
+        loadUsers();
+      });
+
+      // Logout button
+      document.getElementById('logoutBtn').addEventListener('click', handleLogout);
+    };
+
+    /**
+     * Show success message
+     */
+    const showSuccessMessage = (message) => {
+      const successMessage = document.getElementById('successMessage');
+      const successText = document.getElementById('successText');
+      
+      successText.textContent = message;
+      successMessage.classList.add('show');
+
+      // Auto-hide after 5 seconds
+      setTimeout(() => {
+        successMessage.classList.remove('show');
+      }, 5000);
+    };
+
+    /**
+     * Show error alert
+     */
+    const showErrorAlert = (message) => {
+      const errorAlert = document.getElementById('errorAlert');
+      const errorAlertText = document.getElementById('errorAlertText');
+      
+      errorAlertText.textContent = message;
+      errorAlert.classList.add('show');
+    };
+
+    /**
+     * Close error alert
+     */
+    const closeErrorAlert = () => {
+      const errorAlert = document.getElementById('errorAlert');
+      errorAlert.classList.remove('show');
+    };
+
+    /**
+     * Handle logout
+     */
+    const handleLogout = async () => {
+      try {
+        await fetch(`${API_BASE}/auth/logout`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+      } catch (error) {
+        console.error('Logout error:', error);
+      } finally {
+        // Always redirect to login
+        window.location.href = 'login.html';
+      }
+    };
+
+    /**
+     * Escape HTML to prevent XSS
+     */
+    const escapeHtml = (text) => {
+      if (!text) return '';
+      const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+      };
+      return text.replace(/[&<>"']/g, m => map[m]);
+    };
+
+    // Initialize page when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initializePage);
+    } else {
+      initializePage();
+    }
+  </script>
+</body>
+</html>

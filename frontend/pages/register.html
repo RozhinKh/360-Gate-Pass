@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register - 360GatePass</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .spinner {
+      display: none;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #3498db;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      animation: spin 1s linear infinite;
+    }
+
+    .spinner.active {
+      display: inline-block;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .error-text {
+      color: #dc2626;
+      font-size: 0.875rem;
+      margin-top: 0.25rem;
+    }
+
+    .error-input {
+      border-color: #dc2626 !important;
+      background-color: #fef2f2 !important;
+    }
+
+    .success-message {
+      background-color: #d1fae5;
+      color: #065f46;
+      border: 1px solid #6ee7b7;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      margin-bottom: 1.5rem;
+      display: none;
+    }
+
+    .success-message.show {
+      display: block;
+    }
+
+    .password-strength {
+      margin-top: 0.5rem;
+    }
+
+    .strength-indicator {
+      font-size: 0.875rem;
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+    }
+
+    .strength-bar {
+      height: 6px;
+      background-color: #e5e7eb;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: 0.5rem;
+    }
+
+    .strength-fill {
+      height: 100%;
+      transition: width 0.3s ease, background-color 0.3s ease;
+      width: 0;
+    }
+
+    .strength-requirements {
+      font-size: 0.75rem;
+      list-style-position: inside;
+    }
+
+    .strength-requirements li {
+      margin-top: 0.25rem;
+    }
+
+    .requirement.met {
+      color: #059669;
+    }
+
+    .requirement.unmet {
+      color: #6b7280;
+    }
+
+    .requirement.met::before {
+      content: "✓ ";
+      font-weight: bold;
+    }
+
+    .requirement.unmet::before {
+      content: "✗ ";
+    }
+  </style>
+</head>
+<body class="bg-gray-50">
+  <div class="min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 py-12">
+    <div class="w-full max-w-md bg-white rounded-lg shadow-md p-8">
+      <!-- Header -->
+      <div class="text-center mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">360GatePass</h1>
+        <p class="text-gray-600 mt-2">Create Your Account</p>
+      </div>
+
+      <!-- Success Message -->
+      <div id="successMessage" class="success-message">
+        <p id="successText"></p>
+      </div>
+
+      <!-- Error Container -->
+      <div id="errorContainer" class="mb-4">
+        <div id="generalError" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm hidden"></div>
+      </div>
+
+      <!-- Registration Form -->
+      <form id="registerForm" class="space-y-4" novalidate>
+        <!-- Name Field -->
+        <div>
+          <label for="name" class="block text-sm font-medium text-gray-700">Full Name</label>
+          <input
+            type="text"
+            id="name"
+            name="name"
+            placeholder="John Doe"
+            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 transition"
+            required
+          >
+          <div id="nameError" class="error-text"></div>
+        </div>
+
+        <!-- Email Field -->
+        <div>
+          <label for="email" class="block text-sm font-medium text-gray-700">Email Address</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            placeholder="your@email.com"
+            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 transition"
+            required
+          >
+          <div id="emailError" class="error-text"></div>
+        </div>
+
+        <!-- Phone Field -->
+        <div>
+          <label for="phone" class="block text-sm font-medium text-gray-700">Phone Number</label>
+          <input
+            type="tel"
+            id="phone"
+            name="phone"
+            placeholder="(123) 456-7890"
+            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 transition"
+            required
+          >
+          <div id="phoneError" class="error-text"></div>
+        </div>
+
+        <!-- Password Field -->
+        <div>
+          <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            placeholder="••••••••"
+            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 transition"
+            required
+          >
+          <div class="password-strength">
+            <div class="strength-bar">
+              <div id="strengthFill" class="strength-fill"></div>
+            </div>
+            <ul class="strength-requirements">
+              <li id="req-length" class="requirement unmet">At least 8 characters</li>
+              <li id="req-uppercase" class="requirement unmet">One uppercase letter</li>
+              <li id="req-lowercase" class="requirement unmet">One lowercase letter</li>
+              <li id="req-number" class="requirement unmet">One number</li>
+            </ul>
+          </div>
+          <div id="passwordError" class="error-text"></div>
+        </div>
+
+        <!-- Confirm Password Field -->
+        <div>
+          <label for="confirmPassword" class="block text-sm font-medium text-gray-700">Confirm Password</label>
+          <input
+            type="password"
+            id="confirmPassword"
+            name="confirmPassword"
+            placeholder="••••••••"
+            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 transition"
+            required
+          >
+          <div id="confirmPasswordError" class="error-text"></div>
+        </div>
+
+        <!-- Submit Button -->
+        <button
+          type="submit"
+          id="submitBtn"
+          class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition duration-200 flex items-center justify-center gap-2 mt-6"
+        >
+          <span id="btnText">Create Account</span>
+          <div id="spinner" class="spinner"></div>
+        </button>
+      </form>
+
+      <!-- Footer -->
+      <div class="mt-6 text-center">
+        <p class="text-gray-600 text-sm">
+          Already have an account?
+          <a href="login.html" class="text-blue-600 hover:text-blue-700 font-medium">Sign in here</a>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Validation functions
+    const validateName = (name) => {
+      return name.trim().length >= 2;
+    };
+
+    const validateEmail = (email) => {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      return emailRegex.test(email);
+    };
+
+    const validatePhone = (phone) => {
+      const cleaned = phone.replace(/[\s\-()\.]/g, '');
+      return /^\d{10,}$/.test(cleaned);
+    };
+
+    const validatePassword = (password) => {
+      if (password.length < 8) return false;
+      if (!/[A-Z]/.test(password)) return false;
+      if (!/[a-z]/.test(password)) return false;
+      if (!/[0-9]/.test(password)) return false;
+      return true;
+    };
+
+    const getNameError = (name) => {
+      if (!name) return 'Full name is required';
+      if (name.trim().length < 2) return 'Name must be at least 2 characters';
+      return '';
+    };
+
+    const getEmailError = (email) => {
+      if (!email) return 'Email is required';
+      if (!validateEmail(email)) return 'Please enter a valid email address';
+      return '';
+    };
+
+    const getPhoneError = (phone) => {
+      if (!phone) return 'Phone number is required';
+      if (!validatePhone(phone)) return 'Please enter a valid phone number (10+ digits)';
+      return '';
+    };
+
+    const getPasswordError = (password) => {
+      if (!password) return 'Password is required';
+      if (password.length < 8) return 'Password must be at least 8 characters';
+      if (!/[A-Z]/.test(password)) return 'Password must contain an uppercase letter';
+      if (!/[a-z]/.test(password)) return 'Password must contain a lowercase letter';
+      if (!/[0-9]/.test(password)) return 'Password must contain a number';
+      return '';
+    };
+
+    const getConfirmPasswordError = (password, confirmPassword) => {
+      if (!confirmPassword) return 'Please confirm your password';
+      if (password !== confirmPassword) return 'Passwords do not match';
+      return '';
+    };
+
+    // Update password strength indicator
+    const updatePasswordStrength = (password) => {
+      const fill = document.getElementById('strengthFill');
+      const requirements = [
+        { id: 'req-length', check: password.length >= 8 },
+        { id: 'req-uppercase', check: /[A-Z]/.test(password) },
+        { id: 'req-lowercase', check: /[a-z]/.test(password) },
+        { id: 'req-number', check: /[0-9]/.test(password) }
+      ];
+
+      const metCount = requirements.filter(r => r.check).length;
+      const percentage = (metCount / requirements.length) * 100;
+
+      fill.style.width = percentage + '%';
+
+      if (percentage === 0) {
+        fill.style.backgroundColor = '#e5e7eb';
+      } else if (percentage <= 50) {
+        fill.style.backgroundColor = '#ef4444';
+      } else if (percentage <= 75) {
+        fill.style.backgroundColor = '#f59e0b';
+      } else {
+        fill.style.backgroundColor = '#10b981';
+      }
+
+      requirements.forEach(req => {
+        const element = document.getElementById(req.id);
+        if (req.check) {
+          element.classList.remove('unmet');
+          element.classList.add('met');
+        } else {
+          element.classList.remove('met');
+          element.classList.add('unmet');
+        }
+      });
+    };
+
+    // Real-time validation
+    const setupFieldValidation = () => {
+      const nameField = document.getElementById('name');
+      const emailField = document.getElementById('email');
+      const phoneField = document.getElementById('phone');
+      const passwordField = document.getElementById('password');
+      const confirmPasswordField = document.getElementById('confirmPassword');
+
+      // Name field
+      nameField.addEventListener('blur', () => {
+        const error = getNameError(nameField.value);
+        const errorEl = document.getElementById('nameError');
+        errorEl.textContent = error;
+        nameField.classList.toggle('error-input', !!error);
+      });
+
+      nameField.addEventListener('input', () => {
+        const error = getNameError(nameField.value);
+        const errorEl = document.getElementById('nameError');
+        if (error && nameField.value) {
+          errorEl.textContent = error;
+          nameField.classList.add('error-input');
+        } else {
+          errorEl.textContent = '';
+          nameField.classList.remove('error-input');
+        }
+      });
+
+      // Email field
+      emailField.addEventListener('blur', () => {
+        const error = getEmailError(emailField.value);
+        const errorEl = document.getElementById('emailError');
+        errorEl.textContent = error;
+        emailField.classList.toggle('error-input', !!error);
+      });
+
+      emailField.addEventListener('input', () => {
+        const error = getEmailError(emailField.value);
+        const errorEl = document.getElementById('emailError');
+        if (error && emailField.value) {
+          errorEl.textContent = error;
+          emailField.classList.add('error-input');
+        } else {
+          errorEl.textContent = '';
+          emailField.classList.remove('error-input');
+        }
+      });
+
+      // Phone field
+      phoneField.addEventListener('blur', () => {
+        const error = getPhoneError(phoneField.value);
+        const errorEl = document.getElementById('phoneError');
+        errorEl.textContent = error;
+        phoneField.classList.toggle('error-input', !!error);
+      });
+
+      phoneField.addEventListener('input', () => {
+        const error = getPhoneError(phoneField.value);
+        const errorEl = document.getElementById('phoneError');
+        if (error && phoneField.value) {
+          errorEl.textContent = error;
+          phoneField.classList.add('error-input');
+        } else {
+          errorEl.textContent = '';
+          phoneField.classList.remove('error-input');
+        }
+      });
+
+      // Password field
+      passwordField.addEventListener('input', () => {
+        updatePasswordStrength(passwordField.value);
+        const error = getPasswordError(passwordField.value);
+        const errorEl = document.getElementById('passwordError');
+        if (error && passwordField.value) {
+          errorEl.textContent = error;
+          passwordField.classList.add('error-input');
+        } else {
+          errorEl.textContent = '';
+          passwordField.classList.remove('error-input');
+        }
+
+        // Update confirm password validation if it has a value
+        const confirmPassword = confirmPasswordField.value;
+        if (confirmPassword) {
+          const confirmError = getConfirmPasswordError(passwordField.value, confirmPassword);
+          const confirmErrorEl = document.getElementById('confirmPasswordError');
+          if (confirmError) {
+            confirmErrorEl.textContent = confirmError;
+            confirmPasswordField.classList.add('error-input');
+          } else {
+            confirmErrorEl.textContent = '';
+            confirmPasswordField.classList.remove('error-input');
+          }
+        }
+      });
+
+      passwordField.addEventListener('blur', () => {
+        const error = getPasswordError(passwordField.value);
+        const errorEl = document.getElementById('passwordError');
+        errorEl.textContent = error;
+        passwordField.classList.toggle('error-input', !!error);
+      });
+
+      // Confirm Password field
+      confirmPasswordField.addEventListener('blur', () => {
+        const error = getConfirmPasswordError(passwordField.value, confirmPasswordField.value);
+        const errorEl = document.getElementById('confirmPasswordError');
+        errorEl.textContent = error;
+        confirmPasswordField.classList.toggle('error-input', !!error);
+      });
+
+      confirmPasswordField.addEventListener('input', () => {
+        const error = getConfirmPasswordError(passwordField.value, confirmPasswordField.value);
+        const errorEl = document.getElementById('confirmPasswordError');
+        if (error && confirmPasswordField.value) {
+          errorEl.textContent = error;
+          confirmPasswordField.classList.add('error-input');
+        } else {
+          errorEl.textContent = '';
+          confirmPasswordField.classList.remove('error-input');
+        }
+      });
+    };
+
+    // Validate form before submission
+    const validateForm = () => {
+      const name = document.getElementById('name').value;
+      const email = document.getElementById('email').value;
+      const phone = document.getElementById('phone').value;
+      const password = document.getElementById('password').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+
+      const errors = {};
+
+      const nameError = getNameError(name);
+      if (nameError) errors.name = nameError;
+
+      const emailError = getEmailError(email);
+      if (emailError) errors.email = emailError;
+
+      const phoneError = getPhoneError(phone);
+      if (phoneError) errors.phone = phoneError;
+
+      const passwordError = getPasswordError(password);
+      if (passwordError) errors.password = passwordError;
+
+      const confirmPasswordError = getConfirmPasswordError(password, confirmPassword);
+      if (confirmPasswordError) errors.confirmPassword = confirmPasswordError;
+
+      return errors;
+    };
+
+    // Clear errors
+    const clearErrors = () => {
+      document.getElementById('nameError').textContent = '';
+      document.getElementById('emailError').textContent = '';
+      document.getElementById('phoneError').textContent = '';
+      document.getElementById('passwordError').textContent = '';
+      document.getElementById('confirmPasswordError').textContent = '';
+      document.getElementById('generalError').classList.add('hidden');
+      document.getElementById('generalError').textContent = '';
+      document.getElementById('name').classList.remove('error-input');
+      document.getElementById('email').classList.remove('error-input');
+      document.getElementById('phone').classList.remove('error-input');
+      document.getElementById('password').classList.remove('error-input');
+      document.getElementById('confirmPassword').classList.remove('error-input');
+    };
+
+    // Show general error
+    const showGeneralError = (message) => {
+      const errorEl = document.getElementById('generalError');
+      errorEl.textContent = message;
+      errorEl.classList.remove('hidden');
+    };
+
+    // Set loading state
+    const setLoading = (isLoading) => {
+      const submitBtn = document.getElementById('submitBtn');
+      const spinner = document.getElementById('spinner');
+      const btnText = document.getElementById('btnText');
+
+      submitBtn.disabled = isLoading;
+      if (isLoading) {
+        submitBtn.classList.add('opacity-75', 'cursor-not-allowed');
+        spinner.classList.add('active');
+        btnText.textContent = 'Creating Account...';
+      } else {
+        submitBtn.classList.remove('opacity-75', 'cursor-not-allowed');
+        spinner.classList.remove('active');
+        btnText.textContent = 'Create Account';
+      }
+    };
+
+    // Handle form submission
+    const handleRegister = async (e) => {
+      e.preventDefault();
+      clearErrors();
+
+      const validationErrors = validateForm();
+      if (Object.keys(validationErrors).length > 0) {
+        Object.keys(validationErrors).forEach(field => {
+          document.getElementById(`${field}Error`).textContent = validationErrors[field];
+          document.getElementById(field).classList.add('error-input');
+        });
+        return;
+      }
+
+      const name = document.getElementById('name').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      const password = document.getElementById('password').value;
+
+      setLoading(true);
+
+      try {
+        const response = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ name, email, phone, password })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          // Handle backend validation errors
+          let errorMessage = data.message || 'Registration failed. Please try again.';
+          if (data.details && Array.isArray(data.details)) {
+            errorMessage = data.details.join('; ');
+          }
+          showGeneralError(errorMessage);
+          setLoading(false);
+          return;
+        }
+
+        // Show success message and redirect to login
+        const successMsg = document.getElementById('successMessage');
+        const successText = document.getElementById('successText');
+        successText.textContent = 'Account created successfully! Redirecting to login...';
+        successMsg.classList.add('show');
+
+        setTimeout(() => {
+          window.location.href = 'login.html';
+        }, 2000);
+      } catch (error) {
+        showGeneralError('Network error. Please check your connection and try again.');
+        setLoading(false);
+      }
+    };
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      setupFieldValidation();
+      document.getElementById('registerForm').addEventListener('submit', handleRegister);
+    });
+  </script>
+</body>
+</html>
