@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Host Dashboard - 360GatePass</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .spinner {
+      display: none;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #3498db;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      animation: spin 1s linear infinite;
+    }
+
+    .spinner.active {
+      display: inline-block;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .error-text {
+      color: #dc2626;
+      font-size: 0.875rem;
+      margin-top: 0.25rem;
+    }
+
+    .error-input {
+      border-color: #dc2626 !important;
+      background-color: #fef2f2 !important;
+    }
+
+    .success-message {
+      background-color: #d1fae5;
+      color: #065f46;
+      border: 1px solid #6ee7b7;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      margin-bottom: 1.5rem;
+      display: none;
+    }
+
+    .success-message.show {
+      display: block;
+    }
+
+    .alert-error {
+      background-color: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      margin-bottom: 1.5rem;
+      display: none;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .alert-error.show {
+      display: flex;
+    }
+
+    .alert-close {
+      margin-left: auto;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 0.375rem 0.75rem;
+      border-radius: 0.375rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+    }
+
+    .status-pending {
+      background-color: #fef3c7;
+      color: #92400e;
+    }
+
+    .status-approved {
+      background-color: #dcfce7;
+      color: #166534;
+    }
+
+    .status-rejected {
+      background-color: #fee2e2;
+      color: #991b1b;
+    }
+
+    .loading-skeleton {
+      background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+      background-size: 200% 100%;
+      animation: loading 1.5s infinite;
+    }
+
+    @keyframes loading {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* Modal styles */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 50;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay.show {
+      display: flex;
+    }
+
+    .modal-content {
+      background-color: white;
+      border-radius: 0.5rem;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+      max-width: 500px;
+      width: 90%;
+      padding: 2rem;
+      animation: slideUp 0.3s ease-out;
+    }
+
+    @keyframes slideUp {
+      from {
+        transform: translateY(20px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .guest-card {
+      border: 1px solid #e5e7eb;
+      border-radius: 0.5rem;
+      padding: 1.5rem;
+      background-color: white;
+      transition: box-shadow 0.3s ease;
+    }
+
+    .guest-card:hover {
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .action-button {
+      transition: all 0.2s ease;
+    }
+
+    .action-button:active {
+      transform: scale(0.98);
+    }
+
+    .tab-button {
+      padding: 0.75rem 1.5rem;
+      font-weight: 500;
+      border-bottom: 3px solid transparent;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+
+    .tab-button.active {
+      color: #2563eb;
+      border-bottom-color: #2563eb;
+    }
+
+    .tab-button:not(.active) {
+      color: #6b7280;
+    }
+
+    .tab-button:hover:not(.active) {
+      color: #374151;
+    }
+  </style>
+</head>
+<body class="bg-gray-50">
+  <div class="min-h-screen">
+    <!-- Navigation Header -->
+    <nav class="bg-white shadow-sm border-b border-gray-200">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div class="flex justify-between items-center">
+          <div class="flex items-center gap-4">
+            <h1 class="text-2xl font-bold text-gray-900">360GatePass</h1>
+            <span class="text-gray-500 text-sm">Host Dashboard</span>
+          </div>
+          <button id="logoutBtn" class="text-gray-600 hover:text-gray-900 text-sm font-medium transition">
+            Logout
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <!-- Success Message -->
+      <div id="successMessage" class="success-message">
+        <p id="successText"></p>
+      </div>
+
+      <!-- Error Alert -->
+      <div id="errorAlert" class="alert-error">
+        <span id="errorAlertText"></span>
+        <span class="alert-close" onclick="closeErrorAlert()">×</span>
+      </div>
+
+      <!-- Main Content Section -->
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <!-- Header Section -->
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold text-gray-900">Visit Requests</h2>
+          <button id="refreshBtn" class="text-blue-600 hover:text-blue-700 text-sm font-medium transition flex items-center gap-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+            </svg>
+            Refresh
+          </button>
+        </div>
+
+        <!-- Tabs -->
+        <div class="border-b border-gray-200 mb-6 flex gap-8">
+          <button id="pendingTab" class="tab-button active" data-tab="pending">
+            Pending Requests
+            <span id="pendingCount" class="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full"></span>
+          </button>
+          <button id="historyTab" class="tab-button" data-tab="history">
+            History
+          </button>
+        </div>
+
+        <!-- Pending Requests Section -->
+        <div id="pendingSection">
+          <!-- Empty State -->
+          <div id="emptyPending" class="text-center py-12">
+            <svg class="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <p class="text-gray-500 text-lg">No pending requests</p>
+            <p class="text-gray-400 text-sm mt-2">All visit requests have been reviewed</p>
+          </div>
+
+          <!-- Pending Requests Container -->
+          <div id="pendingContainer" class="space-y-4 hidden">
+            <!-- Guest cards will be populated here -->
+          </div>
+
+          <!-- Loading Skeleton -->
+          <div id="pendingLoadingSkeleton" class="space-y-4 hidden">
+            <div class="loading-skeleton h-32 rounded-lg"></div>
+            <div class="loading-skeleton h-32 rounded-lg"></div>
+            <div class="loading-skeleton h-32 rounded-lg"></div>
+          </div>
+        </div>
+
+        <!-- History Section (hidden by default) -->
+        <div id="historySection" class="hidden">
+          <!-- Empty State -->
+          <div id="emptyHistory" class="text-center py-12">
+            <p class="text-gray-500 text-lg">No visit history</p>
+            <p class="text-gray-400 text-sm mt-2">You haven't reviewed any visit requests yet</p>
+          </div>
+
+          <!-- History Container -->
+          <div id="historyContainer" class="space-y-4 hidden">
+            <!-- History cards will be populated here -->
+          </div>
+
+          <!-- Loading Skeleton -->
+          <div id="historyLoadingSkeleton" class="space-y-4 hidden">
+            <div class="loading-skeleton h-24 rounded-lg"></div>
+            <div class="loading-skeleton h-24 rounded-lg"></div>
+            <div class="loading-skeleton h-24 rounded-lg"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reject Modal -->
+  <div id="rejectModal" class="modal-overlay">
+    <div class="modal-content">
+      <h3 class="text-lg font-bold text-gray-900 mb-4">Reject Visit Request</h3>
+      
+      <!-- Guest Info -->
+      <div class="bg-gray-50 rounded-lg p-4 mb-4">
+        <p class="text-sm text-gray-600">Guest</p>
+        <p id="modalGuestName" class="font-medium text-gray-900"></p>
+        <p id="modalGuestEmail" class="text-sm text-gray-600"></p>
+      </div>
+
+      <!-- Rejection Reason Form -->
+      <form id="rejectForm" class="space-y-4" novalidate>
+        <div>
+          <label for="rejectionReason" class="block text-sm font-medium text-gray-700">Rejection Reason *</label>
+          <textarea
+            id="rejectionReason"
+            name="rejectionReason"
+            rows="4"
+            placeholder="Please provide a reason for rejecting this visit request"
+            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 transition resize-none"
+            required
+          ></textarea>
+          <div id="reasonError" class="error-text"></div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex gap-3 pt-4">
+          <button
+            type="button"
+            id="cancelRejectBtn"
+            class="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 font-medium hover:bg-gray-50 transition"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            id="submitRejectBtn"
+            class="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-md transition flex items-center justify-center gap-2"
+          >
+            <span id="rejectBtnText">Reject Request</span>
+            <div id="rejectSpinner" class="spinner"></div>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // API Base URL
+    const API_BASE = '/api';
+
+    // State management
+    let currentUser = null;
+    let allVisits = [];
+    let currentRejectVisitId = null;
+    let isProcessing = false;
+
+    /**
+     * Initialize the page
+     */
+    const initializePage = async () => {
+      try {
+        // Check authentication
+        await checkAuthentication();
+        
+        // Load initial visits
+        await loadHostVisits();
+
+        // Setup event listeners
+        setupEventListeners();
+      } catch (error) {
+        console.error('Error initializing page:', error);
+        showErrorAlert('Failed to initialize page. Please refresh and try again.');
+      }
+    };
+
+    /**
+     * Check authentication status
+     */
+    const checkAuthentication = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/auth/me`, {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.status === 401) {
+          // Not authenticated, redirect to login
+          window.location.href = 'login.html';
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        currentUser = data.user;
+
+        // Check if user is a Host
+        if (currentUser.role !== 'Host') {
+          window.location.href = 'login.html';
+          return;
+        }
+      } catch (error) {
+        console.error('Authentication check failed:', error);
+        window.location.href = 'login.html';
+      }
+    };
+
+    /**
+     * Load host visits from API
+     */
+    const loadHostVisits = async () => {
+      try {
+        // Show loading skeleton for pending
+        document.getElementById('pendingLoadingSkeleton').classList.remove('hidden');
+        document.getElementById('pendingContainer').classList.add('hidden');
+        document.getElementById('emptyPending').classList.add('hidden');
+
+        const response = await fetch(`${API_BASE}/visits/host`, {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch visits: ${response.status}`);
+        }
+
+        const data = await response.json();
+        allVisits = data.visits || [];
+
+        // Hide loading skeleton
+        document.getElementById('pendingLoadingSkeleton').classList.add('hidden');
+
+        // Render pending and history
+        renderVisits();
+      } catch (error) {
+        console.error('Error loading visits:', error);
+        document.getElementById('pendingLoadingSkeleton').classList.add('hidden');
+        document.getElementById('emptyPending').classList.remove('hidden');
+        showErrorAlert('Failed to load visit requests.');
+      }
+    };
+
+    /**
+     * Render visits - separate pending and history
+     */
+    const renderVisits = () => {
+      const pendingVisits = allVisits.filter(v => v.status === 'pending');
+      const historyVisits = allVisits.filter(v => v.status !== 'pending');
+
+      // Render pending visits
+      renderPendingVisits(pendingVisits);
+      
+      // Render history visits
+      renderHistoryVisits(historyVisits);
+
+      // Update pending count badge
+      const pendingCount = document.getElementById('pendingCount');
+      if (pendingVisits.length > 0) {
+        pendingCount.textContent = pendingVisits.length;
+      } else {
+        pendingCount.textContent = '';
+      }
+    };
+
+    /**
+     * Render pending visits section
+     */
+    const renderPendingVisits = (pendingVisits) => {
+      const container = document.getElementById('pendingContainer');
+      const emptyState = document.getElementById('emptyPending');
+
+      if (pendingVisits.length === 0) {
+        container.classList.add('hidden');
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      container.classList.remove('hidden');
+      emptyState.classList.add('hidden');
+      container.innerHTML = '';
+
+      pendingVisits.forEach(visit => {
+        const card = createPendingCard(visit);
+        container.appendChild(card);
+      });
+    };
+
+    /**
+     * Render history visits section
+     */
+    const renderHistoryVisits = (historyVisits) => {
+      const container = document.getElementById('historyContainer');
+      const emptyState = document.getElementById('emptyHistory');
+
+      if (historyVisits.length === 0) {
+        container.classList.add('hidden');
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      container.classList.remove('hidden');
+      emptyState.classList.add('hidden');
+      container.innerHTML = '';
+
+      // Sort by creation date (newest first)
+      const sorted = [...historyVisits].sort((a, b) => {
+        return new Date(b.created_at) - new Date(a.created_at);
+      });
+
+      sorted.forEach(visit => {
+        const card = createHistoryCard(visit);
+        container.appendChild(card);
+      });
+    };
+
+    /**
+     * Create a pending visit card element
+     */
+    const createPendingCard = (visit) => {
+      const card = document.createElement('div');
+      card.className = 'guest-card';
+
+      // Format dates
+      const visitDate = new Date(visit.visit_date);
+      const formattedVisitDate = visitDate.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+
+      const createdAt = new Date(visit.created_at);
+      const formattedCreated = createdAt.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
+      const guestName = visit.guest?.name || 'Unknown Guest';
+      const guestEmail = visit.guest?.email || 'N/A';
+      const guestPhone = visit.guest?.phone || 'N/A';
+
+      card.innerHTML = `
+        <div class="space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Guest Information -->
+            <div>
+              <p class="text-sm text-gray-500">Guest Name</p>
+              <p class="font-medium text-gray-900">${escapeHtml(guestName)}</p>
+              <p class="text-sm text-gray-600 mt-1">${escapeHtml(guestEmail)}</p>
+              <p class="text-sm text-gray-600">${escapeHtml(guestPhone)}</p>
+            </div>
+
+            <!-- Visit Information -->
+            <div>
+              <p class="text-sm text-gray-500">Visit Date</p>
+              <p class="font-medium text-gray-900">${formattedVisitDate}</p>
+              <p class="text-sm text-gray-500 mt-1">Requested on</p>
+              <p class="text-sm text-gray-600">${formattedCreated}</p>
+            </div>
+          </div>
+
+          <!-- Purpose -->
+          <div>
+            <p class="text-sm text-gray-500">Purpose</p>
+            <p class="text-gray-900 line-clamp-2">${escapeHtml(visit.purpose)}</p>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="flex gap-3 pt-4 border-t border-gray-200">
+            <button
+              class="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-md transition action-button"
+              onclick="approveVisit(${visit.id})"
+            >
+              Approve
+            </button>
+            <button
+              class="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-md transition action-button"
+              onclick="openRejectModal(${visit.id}, '${escapeHtmlAttr(guestName)}', '${escapeHtmlAttr(guestEmail)}')"
+            >
+              Reject
+            </button>
+          </div>
+        </div>
+      `;
+
+      return card;
+    };
+
+    /**
+     * Create a history visit card element
+     */
+    const createHistoryCard = (visit) => {
+      const card = document.createElement('div');
+      card.className = 'border border-gray-200 rounded-lg p-4 bg-gray-50';
+
+      // Format dates
+      const visitDate = new Date(visit.visit_date);
+      const formattedVisitDate = visitDate.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+
+      const guestName = visit.guest?.name || 'Unknown Guest';
+      const guestEmail = visit.guest?.email || 'N/A';
+
+      // Status badge
+      const statusClass = getStatusBadgeClass(visit.status);
+      const statusBadge = `<span class="status-badge ${statusClass}">${visit.status.charAt(0).toUpperCase() + visit.status.slice(1)}</span>`;
+
+      let content = `
+        <div class="space-y-3">
+          <div class="flex justify-between items-start gap-4">
+            <div class="flex-1">
+              <p class="text-sm text-gray-500">Guest</p>
+              <p class="font-medium text-gray-900">${escapeHtml(guestName)}</p>
+              <p class="text-sm text-gray-600">${escapeHtml(guestEmail)}</p>
+            </div>
+            <div>${statusBadge}</div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <p class="text-sm text-gray-500">Visit Date</p>
+              <p class="font-medium text-gray-900">${formattedVisitDate}</p>
+            </div>
+          </div>
+
+          <div>
+            <p class="text-sm text-gray-500">Purpose</p>
+            <p class="text-gray-900 line-clamp-2">${escapeHtml(visit.purpose)}</p>
+          </div>
+      `;
+
+      // Add rejection reason if status is rejected
+      if (visit.status === 'rejected' && visit.rejection_reason) {
+        content += `
+          <div class="bg-red-50 border-l-4 border-red-400 p-3">
+            <p class="text-sm font-medium text-red-900">Rejection Reason</p>
+            <p class="text-sm text-red-700 mt-1">${escapeHtml(visit.rejection_reason)}</p>
+          </div>
+        `;
+      }
+
+      content += '</div>';
+
+      card.innerHTML = content;
+      return card;
+    };
+
+    /**
+     * Get status badge CSS class
+     */
+    const getStatusBadgeClass = (status) => {
+      switch (status) {
+        case 'pending':
+          return 'status-pending';
+        case 'approved':
+          return 'status-approved';
+        case 'rejected':
+          return 'status-rejected';
+        default:
+          return 'status-pending';
+      }
+    };
+
+    /**
+     * Approve a visit request
+     */
+    const approveVisit = async (visitId) => {
+      if (isProcessing) return;
+
+      try {
+        isProcessing = true;
+
+        const response = await fetch(`${API_BASE}/visits/${visitId}/approve`, {
+          method: 'PUT',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.status === 401) {
+          window.location.href = 'login.html';
+          return;
+        }
+
+        if (!response.ok) {
+          const error = await response.json();
+          const errorMsg = error.message || 'Failed to approve visit';
+          throw new Error(errorMsg);
+        }
+
+        // Find and update the visit in local state
+        const visitIndex = allVisits.findIndex(v => v.id === visitId);
+        if (visitIndex !== -1) {
+          allVisits[visitIndex].status = 'approved';
+        }
+
+        // Refresh UI
+        renderVisits();
+        showSuccessMessage('Visit request approved successfully!');
+      } catch (error) {
+        console.error('Error approving visit:', error);
+        showErrorAlert(error.message || 'Failed to approve visit request.');
+      } finally {
+        isProcessing = false;
+      }
+    };
+
+    /**
+     * Open reject modal
+     */
+    const openRejectModal = (visitId, guestName, guestEmail) => {
+      currentRejectVisitId = visitId;
+      document.getElementById('modalGuestName').textContent = guestName;
+      document.getElementById('modalGuestEmail').textContent = guestEmail;
+      document.getElementById('rejectionReason').value = '';
+      document.getElementById('reasonError').textContent = '';
+      document.getElementById('rejectionReason').classList.remove('error-input');
+      document.getElementById('rejectModal').classList.add('show');
+    };
+
+    /**
+     * Close reject modal
+     */
+    const closeRejectModal = () => {
+      document.getElementById('rejectModal').classList.remove('show');
+      currentRejectVisitId = null;
+    };
+
+    /**
+     * Validate rejection reason
+     */
+    const validateRejectionReason = () => {
+      const reason = document.getElementById('rejectionReason').value.trim();
+      const errorEl = document.getElementById('reasonError');
+      
+      if (!reason) {
+        errorEl.textContent = 'Rejection reason is required';
+        document.getElementById('rejectionReason').classList.add('error-input');
+        return false;
+      } else if (reason.length < 10) {
+        errorEl.textContent = 'Reason must be at least 10 characters';
+        document.getElementById('rejectionReason').classList.add('error-input');
+        return false;
+      } else {
+        errorEl.textContent = '';
+        document.getElementById('rejectionReason').classList.remove('error-input');
+        return true;
+      }
+    };
+
+    /**
+     * Handle rejection form submission
+     */
+    const handleRejectSubmit = async (e) => {
+      e.preventDefault();
+      
+      if (!validateRejectionReason()) {
+        return;
+      }
+
+      if (isProcessing || !currentRejectVisitId) return;
+
+      try {
+        isProcessing = true;
+        setRejectButtonLoading(true);
+
+        const reason = document.getElementById('rejectionReason').value.trim();
+
+        const response = await fetch(`${API_BASE}/visits/${currentRejectVisitId}/reject`, {
+          method: 'PUT',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            reason: reason
+          })
+        });
+
+        if (response.status === 401) {
+          window.location.href = 'login.html';
+          return;
+        }
+
+        if (!response.ok) {
+          const error = await response.json();
+          const errorMsg = error.message || 'Failed to reject visit';
+          throw new Error(errorMsg);
+        }
+
+        // Find and update the visit in local state
+        const visitIndex = allVisits.findIndex(v => v.id === currentRejectVisitId);
+        if (visitIndex !== -1) {
+          allVisits[visitIndex].status = 'rejected';
+          allVisits[visitIndex].rejection_reason = reason;
+        }
+
+        // Close modal and refresh UI
+        closeRejectModal();
+        renderVisits();
+        showSuccessMessage('Visit request rejected successfully!');
+      } catch (error) {
+        console.error('Error rejecting visit:', error);
+        showErrorAlert(error.message || 'Failed to reject visit request.');
+      } finally {
+        isProcessing = false;
+        setRejectButtonLoading(false);
+      }
+    };
+
+    /**
+     * Set reject button loading state
+     */
+    const setRejectButtonLoading = (isLoading) => {
+      const submitBtn = document.getElementById('submitRejectBtn');
+      const spinner = document.getElementById('rejectSpinner');
+      const btnText = document.getElementById('rejectBtnText');
+
+      submitBtn.disabled = isLoading;
+      if (isLoading) {
+        submitBtn.classList.add('opacity-75', 'cursor-not-allowed');
+        spinner.classList.add('active');
+        btnText.textContent = 'Rejecting...';
+      } else {
+        submitBtn.classList.remove('opacity-75', 'cursor-not-allowed');
+        spinner.classList.remove('active');
+        btnText.textContent = 'Reject Request';
+      }
+    };
+
+    /**
+     * Setup event listeners
+     */
+    const setupEventListeners = () => {
+      // Refresh button
+      document.getElementById('refreshBtn').addEventListener('click', loadHostVisits);
+
+      // Logout button
+      document.getElementById('logoutBtn').addEventListener('click', handleLogout);
+
+      // Tab buttons
+      document.getElementById('pendingTab').addEventListener('click', () => switchTab('pending'));
+      document.getElementById('historyTab').addEventListener('click', () => switchTab('history'));
+
+      // Reject modal
+      document.getElementById('cancelRejectBtn').addEventListener('click', closeRejectModal);
+      document.getElementById('rejectForm').addEventListener('submit', handleRejectSubmit);
+      document.getElementById('rejectionReason').addEventListener('blur', validateRejectionReason);
+
+      // Close modal when clicking outside
+      document.getElementById('rejectModal').addEventListener('click', (e) => {
+        if (e.target.id === 'rejectModal') {
+          closeRejectModal();
+        }
+      });
+    };
+
+    /**
+     * Switch between tabs
+     */
+    const switchTab = (tab) => {
+      // Update tab button styles
+      document.querySelectorAll('.tab-button').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      event.target.classList.add('active');
+
+      // Show/hide sections
+      if (tab === 'pending') {
+        document.getElementById('pendingSection').classList.remove('hidden');
+        document.getElementById('historySection').classList.add('hidden');
+      } else {
+        document.getElementById('pendingSection').classList.add('hidden');
+        document.getElementById('historySection').classList.remove('hidden');
+      }
+    };
+
+    /**
+     * Show success message
+     */
+    const showSuccessMessage = (message) => {
+      const successMessage = document.getElementById('successMessage');
+      const successText = document.getElementById('successText');
+      
+      successText.textContent = message;
+      successMessage.classList.add('show');
+
+      // Auto-hide after 5 seconds
+      setTimeout(() => {
+        successMessage.classList.remove('show');
+      }, 5000);
+    };
+
+    /**
+     * Show error alert
+     */
+    const showErrorAlert = (message) => {
+      const errorAlert = document.getElementById('errorAlert');
+      const errorAlertText = document.getElementById('errorAlertText');
+      
+      errorAlertText.textContent = message;
+      errorAlert.classList.add('show');
+    };
+
+    /**
+     * Close error alert
+     */
+    const closeErrorAlert = () => {
+      const errorAlert = document.getElementById('errorAlert');
+      errorAlert.classList.remove('show');
+    };
+
+    /**
+     * Handle logout
+     */
+    const handleLogout = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/auth/logout`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          window.location.href = 'login.html';
+        }
+      } catch (error) {
+        console.error('Logout error:', error);
+        // Still redirect even if logout fails
+        window.location.href = 'login.html';
+      }
+    };
+
+    /**
+     * Escape HTML to prevent XSS
+     */
+    const escapeHtml = (text) => {
+      const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+      };
+      return text.replace(/[&<>"']/g, m => map[m]);
+    };
+
+    /**
+     * Escape HTML for attributes
+     */
+    const escapeHtmlAttr = (text) => {
+      return text.replace(/'/g, '&#039;').replace(/"/g, '&quot;');
+    };
+
+    // Initialize page when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initializePage);
+    } else {
+      initializePage();
+    }
+  </script>
+</body>
+</html>
