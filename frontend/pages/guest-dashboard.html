@@ -493,11 +493,11 @@
       `;
 
       // Add rejection reason if status is rejected
-      if (visit.status === 'rejected' && visit.rejectionReason) {
+      if (visit.status === 'rejected' && visit.rejection_reason) {
         content += `
           <div class="bg-red-50 border-l-4 border-red-400 p-3 mt-3">
             <p class="text-sm font-medium text-red-900">Rejection Reason</p>
-            <p class="text-sm text-red-700 mt-1">${escapeHtml(visit.rejectionReason)}</p>
+            <p class="text-sm text-red-700 mt-1">${escapeHtml(visit.rejection_reason)}</p>
           </div>
         `;
       }

@@ -151,7 +151,7 @@ const approveVisit = async (req, res) => {
     const visit = visitResult.rows[0];
 
     // Check if user is the assigned host
-    if (visit.hostid !== hostId) {
+    if (visit.host_id !== hostId) {
       return res.status(403).json({
         error: 'Forbidden',
         message: 'Only the assigned host can approve this visit'
@@ -169,7 +169,7 @@ const approveVisit = async (req, res) => {
     // Update visit status to approved with approval timestamp
     const result = await db.query(
       `UPDATE visits 
-       SET status = 'approved', updatedat = CURRENT_TIMESTAMP
+       SET status = 'approved', updated_at = CURRENT_TIMESTAMP
        WHERE id = $1
        RETURNING *`,
       [visitIdNum]
@@ -220,7 +220,7 @@ const rejectVisit = async (req, res) => {
     const visit = visitResult.rows[0];
 
     // Check if user is the assigned host
-    if (visit.hostid !== hostId) {
+    if (visit.host_id !== hostId) {
       return res.status(403).json({
         error: 'Forbidden',
         message: 'Only the assigned host can reject this visit'
@@ -230,7 +230,7 @@ const rejectVisit = async (req, res) => {
     // Update visit in database
     const result = await db.query(
       `UPDATE visits 
-       SET status = 'rejected', rejectionReason = $1, updatedAt = CURRENT_TIMESTAMP
+       SET status = 'rejected', rejection_reason = $1, updated_at = CURRENT_TIMESTAMP
        WHERE id = $2
        RETURNING *`,
       [reason, visitId]
@@ -262,10 +262,10 @@ const getVisits = async (req, res) => {
 
     // Filter by user role
     if (userRole === 'Guest') {
-      query += ' AND guestId = $1';
+      query += ' AND guest_id = $1';
       params.push(userId);
     } else if (userRole === 'Host') {
-      query += ' AND hostId = $1';
+      query += ' AND host_id = $1';
       params.push(userId);
     }
 
@@ -287,7 +287,7 @@ const getVisits = async (req, res) => {
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
     const offset = (pageNum - 1) * limitNum;
-    query += ` ORDER BY createdAt DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    query += ` ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
     params.push(limitNum, offset);
 
     const result = await db.query(query, params);
@@ -333,19 +333,19 @@ const getGuestVisits = async (req, res) => {
       SELECT 
         v.id,
         v.purpose,
-        v.visitdate as visit_date,
+        v.visit_date,
         v.status,
-        v.createdat as created_at,
-        v.updatedat as updated_at,
-        CASE WHEN v.status = 'approved' THEN v.updatedat ELSE NULL END as approved_at,
-        CASE WHEN v.status = 'rejected' THEN v.updatedat ELSE NULL END as rejected_at,
-        v.rejectionreason as rejection_reason,
+        v.created_at,
+        v.updated_at,
+        CASE WHEN v.status = 'approved' THEN v.updated_at ELSE NULL END as approved_at,
+        CASE WHEN v.status = 'rejected' THEN v.updated_at ELSE NULL END as rejected_at,
+        v.rejection_reason,
         u.id as host_id,
-        u.firstname || ' ' || u.lastname as host_name,
+        u.first_name || ' ' || u.last_name as host_name,
         u.email as host_email
       FROM visits v
-      LEFT JOIN users u ON v.hostid = u.id
-      WHERE v.guestid = $1
+      LEFT JOIN users u ON v.host_id = u.id
+      WHERE v.guest_id = $1
     `;
     let params = [guest_id];
 
@@ -356,7 +356,7 @@ const getGuestVisits = async (req, res) => {
     }
 
     // Get total count
-    const countQuery = `SELECT COUNT(*) as count FROM visits v WHERE v.guestid = $1`;
+    const countQuery = `SELECT COUNT(*) as count FROM visits v WHERE v.guest_id = $1`;
     const countParams = [guest_id];
     if (status) {
       countQuery += ` AND v.status = $${countParams.length + 1}`;
@@ -368,7 +368,7 @@ const getGuestVisits = async (req, res) => {
 
     // Add pagination
     const offset = (pageNum - 1) * limitNum;
-    query += ` ORDER BY v.createdat DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    query += ` ORDER BY v.created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
     params.push(limitNum, offset);
 
     const result = await db.query(query, params);
@@ -437,20 +437,20 @@ const getHostVisits = async (req, res) => {
       SELECT 
         v.id,
         v.purpose,
-        v.visitdate as visit_date,
+        v.visit_date,
         v.status,
-        v.createdat as created_at,
-        v.updatedat as updated_at,
-        CASE WHEN v.status = 'approved' THEN v.updatedat ELSE NULL END as approved_at,
-        CASE WHEN v.status = 'rejected' THEN v.updatedat ELSE NULL END as rejected_at,
-        v.rejectionreason as rejection_reason,
+        v.created_at,
+        v.updated_at,
+        CASE WHEN v.status = 'approved' THEN v.updated_at ELSE NULL END as approved_at,
+        CASE WHEN v.status = 'rejected' THEN v.updated_at ELSE NULL END as rejected_at,
+        v.rejection_reason,
         u.id as guest_id,
-        u.firstname || ' ' || u.lastname as guest_name,
+        u.first_name || ' ' || u.last_name as guest_name,
         u.email as guest_email,
         u.phone as guest_phone
       FROM visits v
-      LEFT JOIN users u ON v.guestid = u.id
-      WHERE v.hostid = $1
+      LEFT JOIN users u ON v.guest_id = u.id
+      WHERE v.host_id = $1
     `;
     let params = [host_id];
 
@@ -461,7 +461,7 @@ const getHostVisits = async (req, res) => {
     }
 
     // Get total count
-    const countQuery = `SELECT COUNT(*) as count FROM visits v WHERE v.hostid = $1`;
+    const countQuery = `SELECT COUNT(*) as count FROM visits v WHERE v.host_id = $1`;
     const countParams = [host_id];
     if (status) {
       countQuery += ` AND v.status = $${countParams.length + 1}`;
@@ -473,7 +473,7 @@ const getHostVisits = async (req, res) => {
 
     // Add ordering: pending first, then by creation date DESC
     const offset = (pageNum - 1) * limitNum;
-    query += ` ORDER BY CASE WHEN v.status = 'pending' THEN 0 ELSE 1 END, v.createdat DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    query += ` ORDER BY CASE WHEN v.status = 'pending' THEN 0 ELSE 1 END, v.created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
     params.push(limitNum, offset);
 
     const result = await db.query(query, params);

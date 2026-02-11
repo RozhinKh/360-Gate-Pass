@@ -46,7 +46,7 @@ const listUsers = async (req, res) => {
     // Search by email or name if provided (case-insensitive)
     if (search) {
       const searchParam = `%${search}%`;
-      whereConditions.push(`(email ILIKE $${params.length + 1} OR CONCAT("firstName", ' ', "lastName") ILIKE $${params.length + 2})`);
+      whereConditions.push(`(email ILIKE $${params.length + 1} OR CONCAT(firstname, ' ', lastname) ILIKE $${params.length + 2})`);
       params.push(searchParam, searchParam);
     }
 
@@ -54,7 +54,7 @@ const listUsers = async (req, res) => {
     const whereClause = whereConditions.length > 0 ? 'WHERE ' + whereConditions.join(' AND ') : '';
 
     // Build full query with WHERE clause
-    const selectQuery = `SELECT id, email, "firstName", "lastName", phone, role, "createdAt" FROM users ${whereClause}`;
+    const selectQuery = `SELECT id, email, firstname, lastname, phone, role, created_at FROM users ${whereClause}`;
     
     // Get total count before pagination
     const countQuery = `SELECT COUNT(*) as count FROM users ${whereClause}`;
@@ -64,7 +64,7 @@ const listUsers = async (req, res) => {
 
     // Add pagination to select query
     const offset = (pageNum - 1) * limitNum;
-    const paginatedQuery = selectQuery + ` ORDER BY "createdAt" DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    const paginatedQuery = selectQuery + ` ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
     const paginatedParams = [...params, limitNum, offset];
 
     // Execute query to get paginated results
@@ -73,11 +73,11 @@ const listUsers = async (req, res) => {
     // Format response with proper field names
     const users = result.rows.map(user => ({
       id: user.id,
-      name: `${user.firstName} ${user.lastName}`.trim(),
+      name: `${user.firstname} ${user.lastname}`.trim(),
       email: user.email,
       phone: user.phone,
       role: user.role,
-      created_at: user.createdAt
+      created_at: user.created_at
     }));
 
     res.status(200).json({
@@ -143,7 +143,7 @@ const updateUserRole = async (req, res) => {
 
     // Update role in database
     const result = await db.query(
-      'UPDATE users SET role = $1, "updatedAt" = CURRENT_TIMESTAMP WHERE id = $2 RETURNING id, email, "firstName", "lastName", phone, role, "createdAt"',
+      'UPDATE users SET role = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING id, email, firstname, lastname, phone, role, created_at',
       [role, id]
     );
 
@@ -151,11 +151,11 @@ const updateUserRole = async (req, res) => {
     const updatedUser = result.rows[0];
     res.status(200).json({
       id: updatedUser.id,
-      name: `${updatedUser.firstName} ${updatedUser.lastName}`.trim(),
+      name: `${updatedUser.firstname} ${updatedUser.lastname}`.trim(),
       email: updatedUser.email,
       phone: updatedUser.phone,
       role: updatedUser.role,
-      created_at: updatedUser.createdAt
+      created_at: updatedUser.created_at
     });
   } catch (error) {
     res.status(500).json({
@@ -228,8 +228,8 @@ const generateReport = async (req, res) => {
     // Build date filtering clauses
     if (start_date && end_date) {
       params.push(start_date, end_date);
-      dateWhereClause = ` AND DATE(p."issueDate") >= $${params.length - 1} AND DATE(p."issueDate") <= $${params.length}`;
-      userDateWhereClause = ` AND DATE(u."createdAt") >= $${params.length - 1} AND DATE(u."createdAt") <= $${params.length}`;
+      dateWhereClause = ` AND DATE(p.issue_date) >= $${params.length - 1} AND DATE(p.issue_date) <= $${params.length}`;
+      userDateWhereClause = ` AND DATE(u.created_at) >= $${params.length - 1} AND DATE(u.created_at) <= $${params.length}`;
     }
 
     // ============================================
@@ -256,7 +256,7 @@ const generateReport = async (req, res) => {
 
     // Get active users count
     const activeUsersResult = await db.query(
-      'SELECT COUNT(*) as count FROM users WHERE "isActive" = true'
+      'SELECT COUNT(*) as count FROM users WHERE isactive = true'
     );
     const activeUsers = parseInt(activeUsersResult.rows[0].count);
 
@@ -320,7 +320,7 @@ const generateReport = async (req, res) => {
     const issuedPassesQuery = `
       SELECT COUNT(*) as count FROM passes
       WHERE status IN ('active', 'expired')
-      ${dateWhereClause ? dateWhereClause.replace('p."issueDate"', '"issueDate"') : ''}
+      ${dateWhereClause ? dateWhereClause.replace('p.issue_date', 'issue_date') : ''}
     `;
 
     const issuedParams = dateWhereClause ? params.slice(-2) : [];
@@ -339,24 +339,24 @@ const generateReport = async (req, res) => {
     const activeGuestsResult = await db.query(`
       SELECT 
         el.id,
-        el."entryTime",
-        p."passCode",
-        v."guestName",
-        v."guestEmail"
+        el.entry_time,
+        p.pass_code,
+        v.guest_name,
+        v.guest_email
       FROM entry_logs el
-      JOIN passes p ON el."passId" = p.id
-      JOIN visits v ON p."visitId" = v.id
-      WHERE el."exitTime" IS NULL
-      ORDER BY el."entryTime" DESC
+      JOIN passes p ON el.pass_id = p.id
+      JOIN visits v ON p.visit_id = v.id
+      WHERE el.exit_time IS NULL
+      ORDER BY el.entry_time DESC
       LIMIT 50
     `);
 
     const activeGuests = activeGuestsResult.rows.map(row => ({
       entry_log_id: row.id,
-      entry_time: row.entryTime,
-      pass_code: row.passCode,
-      guest_name: row.guestName,
-      guest_email: row.guestEmail
+      entry_time: row.entry_time,
+      pass_code: row.pass_code,
+      guest_name: row.guest_name,
+      guest_email: row.guest_email
     }));
 
     const activeGuestsCount = activeGuests.length;
@@ -366,28 +366,28 @@ const generateReport = async (req, res) => {
     // ============================================
     // Get recent user registrations
     const recentUsersResult = await db.query(`
-      SELECT id, email, CONCAT("firstName", ' ', "lastName") as name, role, "createdAt"
+      SELECT id, email, CONCAT(firstname, ' ', lastname) as name, role, created_at
       FROM users
-      ORDER BY "createdAt" DESC
+      ORDER BY created_at DESC
       LIMIT 5
     `);
 
     // Get recent visit approvals
     const recentApprovalsResult = await db.query(`
-      SELECT v.id, v."guestName", v."purpose", v."updatedAt"
+      SELECT v.id, v.guest_name, v.purpose, v.updated_at
       FROM visits v
       WHERE v.status = 'approved'
-      ORDER BY v."updatedAt" DESC
+      ORDER BY v.updated_at DESC
       LIMIT 5
     `);
 
     // Get recent check-ins
     const recentCheckInsResult = await db.query(`
-      SELECT el.id, p."passCode", v."guestName", el."entryTime"
+      SELECT el.id, p.pass_code, v.guest_name, el.entry_time
       FROM entry_logs el
-      JOIN passes p ON el."passId" = p.id
-      JOIN visits v ON p."visitId" = v.id
-      ORDER BY el."entryTime" DESC
+      JOIN passes p ON el.pass_id = p.id
+      JOIN visits v ON p.visit_id = v.id
+      ORDER BY el.entry_time DESC
       LIMIT 5
     `);
 
@@ -399,7 +399,7 @@ const generateReport = async (req, res) => {
         type: 'registration',
         description: `${row.name} registered as ${row.role}`,
         user_email: row.email,
-        timestamp: row.createdAt
+        timestamp: row.created_at
       });
     });
 
@@ -407,9 +407,9 @@ const generateReport = async (req, res) => {
     recentApprovalsResult.rows.forEach(row => {
       recentActivity.push({
         type: 'visit_approval',
-        description: `Visit approved for ${row.guestName} (${row.purpose})`,
+        description: `Visit approved for ${row.guest_name} (${row.purpose})`,
         visit_id: row.id,
-        timestamp: row.updatedAt
+        timestamp: row.updated_at
       });
     });
 
@@ -417,9 +417,9 @@ const generateReport = async (req, res) => {
     recentCheckInsResult.rows.forEach(row => {
       recentActivity.push({
         type: 'check_in',
-        description: `${row.guestName} checked in with pass ${row.passCode}`,
-        guest_name: row.guestName,
-        timestamp: row.entryTime
+        description: `${row.guest_name} checked in with pass ${row.pass_code}`,
+        guest_name: row.guest_name,
+        timestamp: row.entry_time
       });
     });
 
