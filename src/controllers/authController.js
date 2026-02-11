@@ -148,7 +148,7 @@ const register = async (req, res) => {
 
     const newUser = result.rows[0];
 
-    // Generate token
+    // Generate token with standardized payload: id, email, and role
     const token = jwt.sign(
       { id: newUser.id, email: newUser.email, role: newUser.role },
       JWT_SECRET,
@@ -207,9 +207,9 @@ const login = async (req, res) => {
       });
     }
 
-    // Generate token with userId and role payload
+    // Generate token with standardized payload: id, email, and role
     const token = jwt.sign(
-      { userId: user.id, role: user.role },
+      { id: user.id, email: user.email, role: user.role },
       JWT_SECRET,
       { expiresIn: JWT_EXPIRATION }
     );

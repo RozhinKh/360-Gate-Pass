@@ -48,7 +48,7 @@ const _clearUsedCodes = () => {
 /**
  * Generate unique numeric pass code
  * Retries up to 10 times to generate a unique code
- * @returns {Promise<string>} A 10-digit numeric pass code
+ * @returns {Promise<string>} A 6-8 digit numeric pass code
  * @throws {Error} If unable to generate unique code after 10 attempts
  */
 const generatePassCode = async () => {
@@ -56,7 +56,10 @@ const generatePassCode = async () => {
   let attempts = 0;
   
   while (attempts < maxAttempts) {
-    const code = Math.floor(Math.random() * 1000000000).toString().padStart(10, '0');
+    // Generate 6-8 digit code: range [100000, 99999999]
+    // Formula: Math.floor(Math.random() * 99900000) + 100000
+    // All generated codes pass frontend validation regex /^\d{6,8}$/
+    const code = (Math.floor(Math.random() * 99900000) + 100000).toString();
     
     // Check in-memory test storage
     if (usedTestCodes.has(code)) {
@@ -66,7 +69,7 @@ const generatePassCode = async () => {
     
     // Check in database
     try {
-      const result = await db.query('SELECT id FROM passes WHERE passCode = $1', [code]);
+      const result = await db.query('SELECT id FROM passes WHERE pass_code = $1', [code]);
       if (result.rows.length === 0) {
         // Track in test storage
         usedTestCodes.add(code);
@@ -173,7 +176,7 @@ const issuePass = async (req, res) => {
 
     // Check if pass already exists for this visit
     const existingPass = await db.query(
-      'SELECT id FROM passes WHERE visitId = $1 AND status = $2',
+      'SELECT id FROM passes WHERE visit_id = $1 AND status = $2',
       [visitId, 'active']
     );
 
@@ -200,7 +203,7 @@ const issuePass = async (req, res) => {
     const expiryDate = new Date(issueDate.getTime() + 24 * 60 * 60 * 1000);
 
     const result = await db.query(
-      `INSERT INTO passes (visitId, passCode, issueDate, expiryDate, status, accessLevel, issuedBy)
+      `INSERT INTO passes (visit_id, pass_code, issue_date, expiry_date, status, access_level, issued_by)
        VALUES ($1, $2, $3, $4, 'active', $5, $6)
        RETURNING *`,
       [visitId, passCode, issueDate, expiryDate, accessLevel, issuedBy]
@@ -296,12 +299,12 @@ const checkIn = async (req, res) => {
     // Database mode
     // Query pass with JOIN to visits to get visit status and details
     const passResult = await db.query(
-      `SELECT p.id, p.visitId, p.passCode, p.issueDate, p.expiryDate, p.status, p.accessLevel, p.issuedBy,
-              p.createdAt, p.updatedAt,
-              v.purpose, v.status as visitStatus, v.guestId, v.hostId
+      `SELECT p.id, p.visit_id, p.pass_code, p.issue_date, p.expiry_date, p.status, p.access_level, p.issued_by,
+              p.created_at, p.updated_at,
+              v.purpose, v.status as visitStatus, v.guest_id, v.host_id
        FROM passes p
-       JOIN visits v ON p.visitId = v.id
-       WHERE p.passCode = $1`,
+       JOIN visits v ON p.visit_id = v.id
+       WHERE p.pass_code = $1`,
       [passCode]
     );
 
@@ -323,7 +326,7 @@ const checkIn = async (req, res) => {
     }
 
     // Check if pass is expired
-    if (new Date() > new Date(pass.expirydate)) {
+    if (new Date() > new Date(pass.expiry_date)) {
       return res.status(410).json({
         error: 'Gone',
         message: 'Pass has expired'
@@ -332,7 +335,7 @@ const checkIn = async (req, res) => {
 
     // Check for duplicate check-in
     const existingLog = await db.query(
-      'SELECT id FROM entry_logs WHERE passId = $1 AND exitTime IS NULL',
+      'SELECT id FROM entry_logs WHERE pass_id = $1 AND exit_time IS NULL',
       [pass.id]
     );
 
@@ -347,32 +350,32 @@ const checkIn = async (req, res) => {
     let guestName = '';
     let hostName = '';
 
-    if (pass.guestId) {
+    if (pass.guest_id) {
       const guestResult = await db.query(
-        'SELECT firstName, lastName FROM users WHERE id = $1',
-        [pass.guestId]
+        'SELECT firstname, lastname FROM users WHERE id = $1',
+        [pass.guest_id]
       );
       if (guestResult.rows.length > 0) {
         const guest = guestResult.rows[0];
-        guestName = `${guest.firstName} ${guest.lastName}`;
+        guestName = `${guest.firstname} ${guest.lastname}`;
       }
     }
 
-    if (pass.hostId) {
+    if (pass.host_id) {
       const hostResult = await db.query(
-        'SELECT firstName, lastName FROM users WHERE id = $1',
-        [pass.hostId]
+        'SELECT firstname, lastname FROM users WHERE id = $1',
+        [pass.host_id]
       );
       if (hostResult.rows.length > 0) {
         const host = hostResult.rows[0];
-        hostName = `${host.firstName} ${host.lastName}`;
+        hostName = `${host.firstname} ${host.lastname}`;
       }
     }
 
     // Create entry log in database
     const entryTime = new Date();
     const entryLogResult = await db.query(
-      `INSERT INTO entry_logs (passId, entryTime, entryPoint, entryMethod, verifiedBy)
+      `INSERT INTO entry_logs (pass_id, entry_time, entry_point, entry_method, verified_by)
        VALUES ($1, $2, 'Main Entrance', 'QR Code', $3)
        RETURNING *`,
       [pass.id, entryTime, checkedInBy]
@@ -469,12 +472,12 @@ const checkOut = async (req, res) => {
     // Database mode
     // Query pass with JOIN to visits to get visit status and details
     const passResult = await db.query(
-      `SELECT p.id, p.visitId, p.passCode, p.issueDate, p.expiryDate, p.status, p.accessLevel, p.issuedBy,
-              p.createdAt, p.updatedAt,
-              v.purpose, v.status as visitStatus, v.guestId, v.hostId
+      `SELECT p.id, p.visit_id, p.pass_code, p.issue_date, p.expiry_date, p.status, p.access_level, p.issued_by,
+              p.created_at, p.updated_at,
+              v.purpose, v.status as visitStatus, v.guest_id, v.host_id
        FROM passes p
-       JOIN visits v ON p.visitId = v.id
-       WHERE p.passCode = $1`,
+       JOIN visits v ON p.visit_id = v.id
+       WHERE p.pass_code = $1`,
       [passCode]
     );
 
@@ -489,7 +492,7 @@ const checkOut = async (req, res) => {
 
     // Find active entry log
     const logResult = await db.query(
-      'SELECT * FROM entry_logs WHERE passId = $1 AND exitTime IS NULL',
+      'SELECT * FROM entry_logs WHERE pass_id = $1 AND exit_time IS NULL',
       [pass.id]
     );
 
@@ -505,7 +508,7 @@ const checkOut = async (req, res) => {
     // Update entry log with exit time and checked_out_by
     const exitTime = new Date();
     const result = await db.query(
-      'UPDATE entry_logs SET exitTime = $1, checkedOutBy = $2, updatedAt = CURRENT_TIMESTAMP WHERE id = $3 RETURNING *',
+      'UPDATE entry_logs SET exit_time = $1, checked_out_by = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 RETURNING *',
       [exitTime, checkedOutBy, entryLog.id]
     );
 
@@ -513,25 +516,25 @@ const checkOut = async (req, res) => {
     let guestName = '';
     let hostName = '';
 
-    if (pass.guestId) {
+    if (pass.guest_id) {
       const guestResult = await db.query(
-        'SELECT firstName, lastName FROM users WHERE id = $1',
-        [pass.guestId]
+        'SELECT firstname, lastname FROM users WHERE id = $1',
+        [pass.guest_id]
       );
       if (guestResult.rows.length > 0) {
         const guest = guestResult.rows[0];
-        guestName = `${guest.firstName} ${guest.lastName}`;
+        guestName = `${guest.firstname} ${guest.lastname}`;
       }
     }
 
-    if (pass.hostId) {
+    if (pass.host_id) {
       const hostResult = await db.query(
-        'SELECT firstName, lastName FROM users WHERE id = $1',
-        [pass.hostId]
+        'SELECT firstname, lastname FROM users WHERE id = $1',
+        [pass.host_id]
       );
       if (hostResult.rows.length > 0) {
         const host = hostResult.rows[0];
-        hostName = `${host.firstName} ${host.lastName}`;
+        hostName = `${host.firstname} ${host.lastname}`;
       }
     }
 
@@ -612,12 +615,12 @@ const getActiveGuests = async (req, res) => {
 
     // Database mode: Build query with joins and filters
     let params = [];
-    let whereConditions = 'el.entryTime IS NOT NULL AND el.exitTime IS NULL';
+    let whereConditions = 'el.entry_time IS NOT NULL AND el.exit_time IS NULL';
 
     // Add search filter for guest name and pass code (case-insensitive)
     if (search) {
       const searchPattern = `%${search}%`;
-      whereConditions += ` AND (u_guest.firstName || ' ' || u_guest.lastName ILIKE $${params.length + 1} OR p.passCode ILIKE $${params.length + 2})`;
+      whereConditions += ` AND (u_guest.firstname || ' ' || u_guest.lastname ILIKE $${params.length + 1} OR p.pass_code ILIKE $${params.length + 2})`;
       params.push(searchPattern, searchPattern);
     }
 
@@ -625,10 +628,10 @@ const getActiveGuests = async (req, res) => {
     const countResult = await db.query(
       `SELECT COUNT(DISTINCT el.id) as count
        FROM entry_logs el
-       JOIN passes p ON el.passId = p.id
-       JOIN visits v ON p.visitId = v.id
-       JOIN users u_guest ON v.guestId = u_guest.id
-       JOIN users u_host ON v.hostId = u_host.id
+       JOIN passes p ON el.pass_id = p.id
+       JOIN visits v ON p.visit_id = v.id
+       JOIN users u_guest ON v.guest_id = u_guest.id
+       JOIN users u_host ON v.host_id = u_host.id
        WHERE ${whereConditions}`,
       params
     );
@@ -641,23 +644,23 @@ const getActiveGuests = async (req, res) => {
     const result = await db.query(
       `SELECT 
         el.id as entry_log_id,
-        el.entryTime as entry_time,
-        el.verifiedBy,
+        el.entry_time as entry_time,
+        el.verified_by,
         p.id as pass_id,
-        p.passCode as pass_code,
+        p.pass_code as pass_code,
         u_guest.id as guest_id,
-        u_guest.firstName || ' ' || u_guest.lastName as guest_name,
+        u_guest.firstname || ' ' || u_guest.lastname as guest_name,
         u_guest.email as guest_email,
         u_guest.phone as guest_phone,
-        u_host.firstName || ' ' || u_host.lastName as host_name,
+        u_host.firstname || ' ' || u_host.lastname as host_name,
         v.purpose as visit_purpose
        FROM entry_logs el
-       JOIN passes p ON el.passId = p.id
-       JOIN visits v ON p.visitId = v.id
-       JOIN users u_guest ON v.guestId = u_guest.id
-       JOIN users u_host ON v.hostId = u_host.id
+       JOIN passes p ON el.pass_id = p.id
+       JOIN visits v ON p.visit_id = v.id
+       JOIN users u_guest ON v.guest_id = u_guest.id
+       JOIN users u_host ON v.host_id = u_host.id
        WHERE ${whereConditions}
-       ORDER BY el.entryTime DESC
+       ORDER BY el.entry_time DESC
        LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
       paginationParams
     );
@@ -666,7 +669,7 @@ const getActiveGuests = async (req, res) => {
     const activeGuests = result.rows.map(row => ({
       entry_log_id: row.entry_log_id,
       entry_time: row.entry_time,
-      verified_by: row.verifiedBy,
+      verified_by: row.verified_by,
       pass_code: row.pass_code,
       guest: {
         id: row.guest_id,
@@ -734,7 +737,7 @@ const getApprovedVisits = async (req, res) => {
     // Add date filter (exact match)
     if (date) {
       const paramIndex = params.length + 1;
-      whereConditions += ` AND DATE(v.visitdate) = $${paramIndex}`;
+      whereConditions += ` AND DATE(v.visit_date) = $${paramIndex}`;
       params.push(date);
     }
 
@@ -742,8 +745,8 @@ const getApprovedVisits = async (req, res) => {
     const countResult = await db.query(
       `SELECT COUNT(DISTINCT v.id) as count
        FROM visits v
-       LEFT JOIN users u_guest ON v.guestid = u_guest.id
-       LEFT JOIN passes p ON v.id = p.visitid
+       LEFT JOIN users u_guest ON v.guest_id = u_guest.id
+       LEFT JOIN passes p ON v.id = p.visit_id
        WHERE ${whereConditions}`,
       params
     );
@@ -757,9 +760,9 @@ const getApprovedVisits = async (req, res) => {
       `SELECT 
         v.id,
         v.purpose,
-        v.visitdate as visit_date,
+        v.visit_date as visit_date,
         v.status,
-        v.createdat as created_at,
+        v.created_at as created_at,
         u_guest.id as guest_id,
         u_guest.firstname || ' ' || u_guest.lastname as guest_name,
         u_guest.email as guest_email,
@@ -767,32 +770,28 @@ const getApprovedVisits = async (req, res) => {
         u_host.id as host_id,
         u_host.firstname || ' ' || u_host.lastname as host_name
        FROM visits v
-       LEFT JOIN users u_guest ON v.guestid = u_guest.id
-       LEFT JOIN users u_host ON v.hostid = u_host.id
-       LEFT JOIN passes p ON v.id = p.visitid
+       LEFT JOIN users u_guest ON v.guest_id = u_guest.id
+       LEFT JOIN users u_host ON v.host_id = u_host.id
+       LEFT JOIN passes p ON v.id = p.visit_id
        WHERE ${whereConditions}
-       ORDER BY v.visitdate ASC, v.createdat DESC
+       ORDER BY v.visit_date ASC, v.created_at DESC
        LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
       paginationParams
     );
 
-    // Format response
+    // Format response - flattened structure
     const visits = result.rows.map(row => ({
-      id: row.id,
+      visitId: row.id,
       purpose: row.purpose,
-      visit_date: row.visit_date,
+      visitDate: row.visit_date,
       status: row.status,
-      created_at: row.created_at,
-      guest: {
-        id: row.guest_id,
-        name: row.guest_name,
-        email: row.guest_email,
-        phone: row.guest_phone
-      },
-      host: {
-        id: row.host_id,
-        name: row.host_name
-      }
+      createdAt: row.created_at,
+      guestId: row.guest_id,
+      guestName: row.guest_name,
+      guestEmail: row.guest_email,
+      guestPhone: row.guest_phone,
+      hostId: row.host_id,
+      hostName: row.host_name
     }));
 
     const totalPages = Math.ceil(total / limitNum);
