@@ -69,7 +69,10 @@ describe('passController', () => {
 
       expect(passCode).toBeDefined();
       expect(/^\d+$/.test(passCode)).toBe(true);
-      expect(passCode.length).toBe(10);
+      // Verify pass code is 6-8 digits (matches frontend validation regex)
+      expect(/^\d{6,8}$/.test(passCode)).toBe(true);
+      expect(passCode.length).toBeGreaterThanOrEqual(6);
+      expect(passCode.length).toBeLessThanOrEqual(8);
     });
 
     test('should generate different pass codes for each pass', async () => {
@@ -460,6 +463,101 @@ describe('passController', () => {
       expect(response.activeGuests).not.toContainEqual(
         expect.objectContaining({ id: 3 })
       );
+    });
+  });
+
+  describe('pass code format and validation', () => {
+    test('should generate pass codes that match frontend regex /^\\d{6,8}$/', async () => {
+      const frontendRegex = /^\d{6,8}$/;
+      
+      for (let i = 0; i < 5; i++) {
+        mockReq.body = { visitId: i + 1 };
+
+        await passController.issuePass(mockReq, mockRes);
+
+        const response = mockRes.json.mock.calls[0][0];
+        const passCode = response.pass.passCode;
+
+        // Verify each generated code passes frontend validation
+        expect(frontendRegex.test(passCode)).toBe(true);
+
+        jest.clearAllMocks();
+      }
+    });
+
+    test('should generate pass codes in valid range [100000, 99999999]', async () => {
+      for (let i = 0; i < 10; i++) {
+        mockReq.body = { visitId: i + 1 };
+
+        await passController.issuePass(mockReq, mockRes);
+
+        const response = mockRes.json.mock.calls[0][0];
+        const passCode = response.pass.passCode;
+        const passCodeNum = parseInt(passCode, 10);
+
+        // Verify minimum: 100000 (6 digits)
+        expect(passCodeNum).toBeGreaterThanOrEqual(100000);
+        // Verify maximum: 99999999 (8 digits)
+        expect(passCodeNum).toBeLessThanOrEqual(99999999);
+
+        jest.clearAllMocks();
+      }
+    });
+
+    test('should generate 6-digit pass codes (minimum boundary)', async () => {
+      // Test that 6-digit codes can be generated
+      let found6DigitCode = false;
+      
+      for (let i = 0; i < 20; i++) {
+        mockReq.body = { visitId: i + 1 };
+
+        await passController.issuePass(mockReq, mockRes);
+
+        const response = mockRes.json.mock.calls[0][0];
+        const passCode = response.pass.passCode;
+
+        if (passCode.length === 6) {
+          found6DigitCode = true;
+          // Verify it's in the 6-digit range [100000, 999999]
+          const passCodeNum = parseInt(passCode, 10);
+          expect(passCodeNum).toBeGreaterThanOrEqual(100000);
+          expect(passCodeNum).toBeLessThanOrEqual(999999);
+          break;
+        }
+
+        jest.clearAllMocks();
+      }
+      
+      // It's statistically likely to generate a 6-digit code
+      expect(found6DigitCode).toBe(true);
+    });
+
+    test('should generate 8-digit pass codes (maximum boundary)', async () => {
+      // Test that 8-digit codes can be generated
+      let found8DigitCode = false;
+      
+      for (let i = 0; i < 20; i++) {
+        mockReq.body = { visitId: i + 1 };
+
+        await passController.issuePass(mockReq, mockRes);
+
+        const response = mockRes.json.mock.calls[0][0];
+        const passCode = response.pass.passCode;
+
+        if (passCode.length === 8) {
+          found8DigitCode = true;
+          // Verify it's in the 8-digit range [10000000, 99999999]
+          const passCodeNum = parseInt(passCode, 10);
+          expect(passCodeNum).toBeGreaterThanOrEqual(10000000);
+          expect(passCodeNum).toBeLessThanOrEqual(99999999);
+          break;
+        }
+
+        jest.clearAllMocks();
+      }
+      
+      // It's statistically likely to generate an 8-digit code
+      expect(found8DigitCode).toBe(true);
     });
   });
 

@@ -286,14 +286,14 @@
         // Redirect based on role
         setTimeout(() => {
           const role = user.role;
-          let redirectUrl = '/dashboard/guest.html'; // Default to guest
+          let redirectUrl = 'guest-dashboard.html'; // Default to guest
 
           if (role === 'Host') {
-            redirectUrl = '/dashboard/host.html';
+            redirectUrl = 'host-dashboard.html';
           } else if (role === 'Security') {
-            redirectUrl = '/dashboard/security.html';
+            redirectUrl = 'security-dashboard.html';
           } else if (role === 'Admin') {
-            redirectUrl = '/dashboard/admin.html';
+            redirectUrl = 'admin-dashboard.html';
           }
 
           window.location.href = redirectUrl;
