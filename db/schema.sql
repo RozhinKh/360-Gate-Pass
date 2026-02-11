@@ -6,7 +6,7 @@
 --
 -- Source: tests/helpers/dbHelpers.js (initializeTestDatabase function)
 -- Database: PostgreSQL 12+
--- Column Naming Convention: camelCase (e.g., firstName, createdAt, visitId)
+-- Column Naming Convention: snake_case (e.g., first_name, created_at, visit_id)
 --
 -- Usage: psql -U postgres -d your_database_name < db/schema.sql
 -- ============================================================================
@@ -26,19 +26,19 @@
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
   -- User authentication and profile
-  email VARCHAR(255) UNIQUE NOT NULL,           -- Unique email address for login
+  email VARCHAR(255) UNIQUE NOT NULL,            -- Unique email address for login
   password VARCHAR(255) NOT NULL,                -- Hashed password (bcryptjs)
-  firstName VARCHAR(100),                        -- First name (optional)
-  lastName VARCHAR(100),                         -- Last name (optional)
+  first_name VARCHAR(100),                       -- First name (optional)
+  last_name VARCHAR(100),                        -- Last name (optional)
   -- Role and permissions
   role VARCHAR(50) NOT NULL CHECK (role IN ('Guest', 'Host', 'Security', 'Admin')),
   -- Contact and organizational info
   phone VARCHAR(20),                             -- Phone number (optional)
-  departmentId INTEGER,                          -- Department assignment (optional)
+  department_id INTEGER,                         -- Department assignment (optional)
   -- Status and timestamps
-  isActive BOOLEAN DEFAULT true,                 -- Account active status (default: true)
-  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Account creation timestamp
-  updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- Last update timestamp
+  is_active BOOLEAN DEFAULT true,                -- Account active status (default: true)
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Account creation timestamp
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- Last update timestamp
 );
 
 -- ============================================================================
@@ -58,21 +58,22 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS visits (
   id SERIAL PRIMARY KEY,
   -- Relationships to users
-  guestId INTEGER REFERENCES users(id),         -- FK to visiting guest
-  hostId INTEGER REFERENCES users(id),          -- FK to host/employee
+  guest_id INTEGER REFERENCES users(id),         -- FK to visiting guest
+  host_id INTEGER REFERENCES users(id),          -- FK to host/employee
   -- Guest information (can be stored even without registered user account)
-  guestName VARCHAR(255),                        -- Guest's name (optional)
-  guestEmail VARCHAR(255),                       -- Guest's email (optional)
-  guestPhone VARCHAR(20),                        -- Guest's phone (optional)
+  guest_name VARCHAR(255),                       -- Guest's name (optional)
+  guest_email VARCHAR(255),                      -- Guest's email (optional)
+  guest_phone VARCHAR(20),                       -- Guest's phone (optional)
   -- Visit details
   purpose VARCHAR(255),                          -- Purpose of visit (optional)
-  visitDate DATE,                                -- Scheduled visit date (optional)
-  visitTime TIME,                                -- Scheduled visit time (optional)
-  expectedDuration VARCHAR(100),                 -- Expected duration (optional)
+  visit_date DATE,                               -- Scheduled visit date (optional)
+  visit_time TIME,                               -- Scheduled visit time (optional)
+  expected_duration VARCHAR(100),                -- Expected duration (optional)
+  rejection_reason TEXT,                         -- Rejection reason (optional)
   -- Status and timestamps
-  status VARCHAR(50) DEFAULT 'pending',          -- Visit status: pending, approved, completed, cancelled
-  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Visit request creation time
-  updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- Last status update time
+  status VARCHAR(50) DEFAULT 'pending',          -- Visit status: pending, approved, rejected
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Visit request creation time
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- Last status update time
 );
 
 -- ============================================================================
@@ -93,19 +94,41 @@ CREATE TABLE IF NOT EXISTS visits (
 CREATE TABLE IF NOT EXISTS passes (
   id SERIAL PRIMARY KEY,
   -- Relationship to visit and issuer
-  visitId INTEGER REFERENCES visits(id),         -- FK to associated visit
-  issuedBy INTEGER REFERENCES users(id),         -- FK to security/admin who issued pass
+  visit_id INTEGER REFERENCES visits(id),        -- FK to associated visit
+  issued_by INTEGER REFERENCES users(id),        -- FK to security/admin who issued pass
   -- Pass code and validation
-  passCode VARCHAR(255) UNIQUE NOT NULL,         -- Unique 6-8 digit numeric pass code (format: /^\d{6,8}$/)
+  pass_code VARCHAR(255) UNIQUE NOT NULL,        -- Unique 6-8 digit numeric pass code (format: /^\d{6,8}$/)
   -- Pass validity period
-  issueDate TIMESTAMP NOT NULL,                  -- Timestamp when pass was issued
-  expiryDate TIMESTAMP NOT NULL,                 -- Timestamp when pass expires (typically 24 hours after issue)
+  issue_date TIMESTAMP NOT NULL,                 -- Timestamp when pass was issued
+  expiry_date TIMESTAMP NOT NULL,                -- Timestamp when pass expires (typically 24 hours after issue)
   -- Access control
-  accessLevel VARCHAR(50),                       -- Access level/zone for the pass (optional, e.g., "Building A")
+  access_level VARCHAR(50),                      -- Access level/zone for the pass (optional, e.g., "Building A")
   status VARCHAR(50) DEFAULT 'active',           -- Pass status: active, used, revoked, expired
   -- Audit trail
-  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Pass record creation time
-  updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- Last update time
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Pass record creation time
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- Last update time
+);
+
+-- ============================================================================
+-- TABLE 4: ENTRY_LOGS
+-- ============================================================================
+-- Purpose: Track check-in and check-out events for issued passes
+-- Relationships:
+--   - pass_id → passes(id)
+--   - verified_by / checked_out_by → users(id)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS entry_logs (
+  id SERIAL PRIMARY KEY,
+  pass_id INTEGER REFERENCES passes(id),         -- FK to pass
+  entry_time TIMESTAMP NOT NULL,                 -- Check-in timestamp
+  exit_time TIMESTAMP,                           -- Check-out timestamp (nullable)
+  entry_point VARCHAR(255),                      -- Entry location
+  entry_method VARCHAR(100),                     -- Verification method (QR, manual, etc.)
+  verified_by INTEGER REFERENCES users(id),      -- FK to security who verified entry
+  checked_out_by INTEGER REFERENCES users(id),   -- FK to security who verified exit
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Log creation time
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- Log update time
 );
 
 -- ============================================================================

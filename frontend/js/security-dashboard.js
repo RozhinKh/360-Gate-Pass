@@ -3,7 +3,7 @@
  * Handles check-in/check-out operations and active guest monitoring
  */
 
-const API_BASE_URL = 'http://localhost:3000/api';
+const API_BASE_URL = '/api';
 
 // ============================================================================
 // API Module
@@ -604,7 +604,7 @@ async function checkAuthAndRole() {
 }
 
 function redirectToLogin() {
-  window.location.href = '/frontend/pages/login.html';
+  window.location.href = '/pages/login.html';
 }
 
 // ============================================================================
@@ -629,7 +629,7 @@ document.getElementById('logoutBtn')?.addEventListener('click', async () => {
     localStorage.removeItem('token');
     localStorage.removeItem('userId');
     localStorage.removeItem('userRole');
-    window.location.href = '/frontend/pages/login.html';
+    window.location.href = '/pages/login.html';
   }
 });
 

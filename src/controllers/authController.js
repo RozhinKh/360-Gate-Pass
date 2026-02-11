@@ -131,17 +131,17 @@ const register = async (req, res) => {
     if (usingNewFormat || (!usingOldFormat && !firstName && !lastName)) {
       // New format: store name in firstName field for compatibility
       result = await db.query(
-        `INSERT INTO users (email, password, firstName, role, phone, isActive, createdAt)
+        `INSERT INTO users (email, password, first_name, role, phone, is_active, created_at)
          VALUES ($1, $2, $3, $4, $5, true, CURRENT_TIMESTAMP)
-         RETURNING id, email, firstName as name, phone, role, createdAt as created_at`,
+         RETURNING id, email, first_name as name, phone, role, created_at`,
         [email, hashedPassword, name, role, phone]
       );
     } else {
       // Old format: store firstName and lastName
       result = await db.query(
-        `INSERT INTO users (email, password, firstName, lastName, role, isActive, createdAt)
+        `INSERT INTO users (email, password, first_name, last_name, role, is_active, created_at)
          VALUES ($1, $2, $3, $4, $5, true, CURRENT_TIMESTAMP)
-         RETURNING id, email, firstName, lastName, role, createdAt as created_at`,
+         RETURNING id, email, first_name, last_name, role, created_at`,
         [email, hashedPassword, firstName, lastName, role]
       );
     }
@@ -173,7 +173,7 @@ const register = async (req, res) => {
  */
 const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    let { email, password } = req.body;
 
     // Validation
     if (!email || !password) {
@@ -236,8 +236,8 @@ const login = async (req, res) => {
       user: {
         id: user.id,
         email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
+        firstName: user.first_name,
+        lastName: user.last_name,
         phone: user.phone,
         role: user.role
       },
@@ -278,7 +278,7 @@ const logout = (req, res) => {
 const getCurrentUser = async (req, res) => {
   try {
     // req.user is populated by authenticate middleware
-    const userId = req.user.userId;
+    const userId = req.user.id;
 
     if (!userId) {
       return res.status(401).json({
@@ -289,7 +289,7 @@ const getCurrentUser = async (req, res) => {
 
     // Query database for user details
     const result = await db.query(
-      'SELECT id, email, firstName, lastName, phone, role FROM users WHERE id = $1',
+      'SELECT id, email, first_name, last_name, phone, role FROM users WHERE id = $1',
       [userId]
     );
 
@@ -304,7 +304,14 @@ const getCurrentUser = async (req, res) => {
 
     res.status(200).json({
       message: 'User information retrieved successfully',
-      user
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.first_name,
+        lastName: user.last_name,
+        phone: user.phone,
+        role: user.role
+      }
     });
   } catch (error) {
     res.status(500).json({
@@ -342,13 +349,20 @@ const getUsersByRole = async (req, res) => {
 
     // Query database for users with specified role
     const result = await db.query(
-      'SELECT id, email, firstName, lastName, phone, role FROM users WHERE role = $1 ORDER BY firstName, lastName',
+      'SELECT id, email, first_name, last_name, phone, role FROM users WHERE role = $1 ORDER BY first_name, last_name',
       [role]
     );
 
     res.status(200).json({
       message: `Users with role '${role}' retrieved successfully`,
-      users: result.rows
+      users: result.rows.map(user => ({
+        id: user.id,
+        email: user.email,
+        firstName: user.first_name,
+        lastName: user.last_name,
+        phone: user.phone,
+        role: user.role
+      }))
     });
   } catch (error) {
     console.error('Error getting users by role:', error);

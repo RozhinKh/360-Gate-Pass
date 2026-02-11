@@ -7,6 +7,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
+const path = require('path');
 
 // Import controllers
 const authController = require('./controllers/authController');
@@ -29,6 +30,15 @@ app.use(express.urlencoded({ extended: true }));
 if (process.env.NODE_ENV !== 'test') {
   app.use(morgan('combined'));
 }
+
+// Serve frontend static files
+const frontendPath = path.join(__dirname, '..', 'frontend');
+app.use(express.static(frontendPath));
+
+// Default route to login page
+app.get('/', (req, res) => {
+  res.sendFile(path.join(frontendPath, 'pages', 'login.html'));
+});
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -93,3 +103,11 @@ app.use((err, req, res, next) => {
 });
 
 module.exports = app;
+
+// Start server if this file is executed directly
+if (require.main === module) {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
+}
