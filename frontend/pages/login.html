@@ -64,6 +64,17 @@
       <div id="successMessage" class="success-message">
         <p id="successText"></p>
       </div>
+      <!-- Already Signed In -->
+      <div id="alreadySignedIn" class="mb-4 hidden">
+        <div class="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded">
+          <p class="font-medium">You’re already signed in.</p>
+          <p class="text-sm mt-1">Choose where you want to go:</p>
+          <div class="mt-3 flex gap-2">
+            <button id="goDashboardBtn" class="px-3 py-2 bg-blue-600 text-white rounded-md text-sm">Go to dashboard</button>
+            <button id="signOutBtn" class="px-3 py-2 bg-gray-200 text-gray-800 rounded-md text-sm">Sign out</button>
+          </div>
+        </div>
+      </div>
 
       <!-- Error Container -->
       <div id="errorContainer" class="mb-4">
@@ -256,6 +267,7 @@
       try {
         const response = await fetch('/api/auth/login', {
           method: 'POST',
+          credentials: 'include',
           headers: {
             'Content-Type': 'application/json'
           },
@@ -277,6 +289,12 @@
         sessionStorage.setItem('userName', user.firstName || user.email);
         sessionStorage.setItem('userEmail', user.email);
 
+        // Store token for dashboards that use Authorization header
+        if (data.token) {
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('userRole', user.role);
+        }
+
         // Show success message
         const successMsg = document.getElementById('successMessage');
         const successText = document.getElementById('successText');
@@ -296,7 +314,7 @@
             redirectUrl = 'admin-dashboard.html';
           }
 
-          window.location.href = redirectUrl;
+          window.location.replace(redirectUrl);
         }, 1500);
       } catch (error) {
         showGeneralError('Network error. Please check your connection and try again.');
@@ -308,6 +326,43 @@
     document.addEventListener('DOMContentLoaded', () => {
       setupFieldValidation();
       document.getElementById('loginForm').addEventListener('submit', handleLogin);
+
+      const token = localStorage.getItem('token');
+      const role = sessionStorage.getItem('userRole') || localStorage.getItem('userRole');
+      if (token && role) {
+        document.getElementById('alreadySignedIn').classList.remove('hidden');
+        document.getElementById('loginForm').classList.add('hidden');
+        const goBtn = document.getElementById('goDashboardBtn');
+        const signOutBtn = document.getElementById('signOutBtn');
+        const roleMap = {
+          'Guest': 'guest-dashboard.html',
+          'Host': 'host-dashboard.html',
+          'Security': 'security-dashboard.html',
+          'Admin': 'admin-dashboard.html'
+        };
+        goBtn.addEventListener('click', () => {
+          const target = roleMap[role] || 'guest-dashboard.html';
+          window.location.replace(target);
+        });
+        signOutBtn.addEventListener('click', async () => {
+          try {
+            await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+          } catch (e) {
+            // ignore
+          } finally {
+            localStorage.removeItem('token');
+            localStorage.removeItem('userRole');
+            sessionStorage.clear();
+            window.location.reload();
+          }
+        });
+      }
+    });
+
+    window.addEventListener('pageshow', (event) => {
+      if (event.persisted) {
+        setLoading(false);
+      }
     });
   </script>
 </body>

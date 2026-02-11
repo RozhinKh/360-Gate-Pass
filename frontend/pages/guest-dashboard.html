@@ -181,13 +181,13 @@
                   id="purpose"
                   name="purpose"
                   rows="4"
-                  placeholder="Describe the purpose of your visit (minimum 20 characters)"
+                  placeholder="Describe the purpose of your visit"
                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 transition resize-none"
                   required
                 ></textarea>
                 <div class="flex justify-between items-center mt-1">
                   <div id="purposeError" class="error-text"></div>
-                  <span id="charCount" class="text-xs text-gray-500">0/500 characters</span>
+                  <span id="charCount" class="text-xs text-gray-500">0 characters</span>
                 </div>
               </div>
 
@@ -437,11 +437,21 @@
       const card = document.createElement('div');
       card.className = 'border border-gray-200 rounded-lg p-4 bg-gray-50 hover:shadow-md transition';
 
-      // Find host name
-      const host = hosts.find(h => h.id === visit.host_id);
-      const hostName = host 
-        ? (host.firstName && host.lastName ? `${host.firstName} ${host.lastName}` : host.firstName || 'Unknown')
-        : 'Unknown Host';
+      // Find host name (prefer API-provided host object, fallback to hosts list)
+      let hostName = 'Unknown Host';
+      if (visit.host && visit.host.name) {
+        hostName = visit.host.name;
+      } else if (visit.host_name) {
+        hostName = visit.host_name;
+      } else {
+        const visitHostId = Number(visit.host_id);
+        const host = hosts.find(h => Number(h.id) === visitHostId);
+        if (host) {
+          hostName = host.firstName && host.lastName
+            ? `${host.firstName} ${host.lastName}`
+            : host.firstName || 'Unknown';
+        }
+      }
 
       // Format date
       const visitDate = new Date(visit.visit_date);
@@ -550,7 +560,7 @@
     const updateCharCount = () => {
       const purpose = document.getElementById('purpose').value;
       const charCount = document.getElementById('charCount');
-      charCount.textContent = `${purpose.length}/500 characters`;
+      charCount.textContent = `${purpose.length} characters`;
     };
 
     /**
@@ -580,14 +590,6 @@
       
       if (!purpose) {
         errorEl.textContent = 'Purpose is required';
-        document.getElementById('purpose').classList.add('error-input');
-        return false;
-      } else if (purpose.length < 20) {
-        errorEl.textContent = 'Purpose must be at least 20 characters';
-        document.getElementById('purpose').classList.add('error-input');
-        return false;
-      } else if (purpose.length > 500) {
-        errorEl.textContent = 'Purpose must not exceed 500 characters';
         document.getElementById('purpose').classList.add('error-input');
         return false;
       } else {

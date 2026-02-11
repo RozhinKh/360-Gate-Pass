@@ -46,7 +46,7 @@ const listUsers = async (req, res) => {
     // Search by email or name if provided (case-insensitive)
     if (search) {
       const searchParam = `%${search}%`;
-      whereConditions.push(`(email ILIKE $${params.length + 1} OR CONCAT(firstname, ' ', lastname) ILIKE $${params.length + 2})`);
+      whereConditions.push(`(email ILIKE $${params.length + 1} OR CONCAT(first_name, ' ', last_name) ILIKE $${params.length + 2})`);
       params.push(searchParam, searchParam);
     }
 
@@ -54,7 +54,7 @@ const listUsers = async (req, res) => {
     const whereClause = whereConditions.length > 0 ? 'WHERE ' + whereConditions.join(' AND ') : '';
 
     // Build full query with WHERE clause
-    const selectQuery = `SELECT id, email, firstname, lastname, phone, role, created_at FROM users ${whereClause}`;
+    const selectQuery = `SELECT id, email, first_name, last_name, phone, role, created_at FROM users ${whereClause}`;
     
     // Get total count before pagination
     const countQuery = `SELECT COUNT(*) as count FROM users ${whereClause}`;
@@ -73,7 +73,7 @@ const listUsers = async (req, res) => {
     // Format response with proper field names
     const users = result.rows.map(user => ({
       id: user.id,
-      name: `${user.firstname} ${user.lastname}`.trim(),
+      name: `${user.first_name} ${user.last_name}`.trim(),
       email: user.email,
       phone: user.phone,
       role: user.role,
@@ -143,7 +143,7 @@ const updateUserRole = async (req, res) => {
 
     // Update role in database
     const result = await db.query(
-      'UPDATE users SET role = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING id, email, firstname, lastname, phone, role, created_at',
+      'UPDATE users SET role = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING id, email, first_name, last_name, phone, role, created_at',
       [role, id]
     );
 
@@ -151,7 +151,7 @@ const updateUserRole = async (req, res) => {
     const updatedUser = result.rows[0];
     res.status(200).json({
       id: updatedUser.id,
-      name: `${updatedUser.firstname} ${updatedUser.lastname}`.trim(),
+      name: `${updatedUser.first_name} ${updatedUser.last_name}`.trim(),
       email: updatedUser.email,
       phone: updatedUser.phone,
       role: updatedUser.role,
@@ -256,7 +256,7 @@ const generateReport = async (req, res) => {
 
     // Get active users count
     const activeUsersResult = await db.query(
-      'SELECT COUNT(*) as count FROM users WHERE isactive = true'
+      'SELECT COUNT(*) as count FROM users WHERE is_active = true'
     );
     const activeUsers = parseInt(activeUsersResult.rows[0].count);
 
@@ -366,7 +366,7 @@ const generateReport = async (req, res) => {
     // ============================================
     // Get recent user registrations
     const recentUsersResult = await db.query(`
-      SELECT id, email, CONCAT(firstname, ' ', lastname) as name, role, created_at
+      SELECT id, email, CONCAT(first_name, ' ', last_name) as name, role, created_at
       FROM users
       ORDER BY created_at DESC
       LIMIT 5

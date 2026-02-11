@@ -523,7 +523,8 @@
       card.className = 'guest-card';
 
       // Format dates
-      const visitDate = new Date(visit.visitDate);
+      const visitDateValue = visit.visitDate || visit.visit_date;
+      const visitDate = new Date(visitDateValue);
       const formattedVisitDate = visitDate.toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'short',
@@ -539,9 +540,9 @@
         minute: '2-digit'
       });
 
-      const guestName = visit.guestName || 'Unknown Guest';
-      const guestEmail = visit.guestEmail || 'N/A';
-      const guestPhone = visit.guestPhone || 'N/A';
+      const guestName = visit.guestName || visit.guest?.name || 'Unknown Guest';
+      const guestEmail = visit.guestEmail || visit.guest?.email || 'N/A';
+      const guestPhone = visit.guestPhone || visit.guest?.phone || 'N/A';
 
       card.innerHTML = `
         <div class="space-y-4">
@@ -598,15 +599,16 @@
       card.className = 'border border-gray-200 rounded-lg p-4 bg-gray-50';
 
       // Format dates
-      const visitDate = new Date(visit.visitDate);
+      const visitDateValue = visit.visitDate || visit.visit_date;
+      const visitDate = new Date(visitDateValue);
       const formattedVisitDate = visitDate.toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'short',
         day: 'numeric'
       });
 
-      const guestName = visit.guestName || 'Unknown Guest';
-      const guestEmail = visit.guestEmail || 'N/A';
+      const guestName = visit.guestName || visit.guest?.name || 'Unknown Guest';
+      const guestEmail = visit.guestEmail || visit.guest?.email || 'N/A';
 
       // Status badge
       const statusClass = getStatusBadgeClass(visit.status);

@@ -2,6 +2,86 @@
 
 360GatePass is a web-based system built with Node.js, Express, and PostgreSQL to streamline and automate the management of entry requests, approvals, and guest tracking for organizations, providing transparent, traceable, and secure access control.
 
+## Prerequisites
+
+- Node.js 18+
+- PostgreSQL 12+
+
+## Setup & Run (Local)
+
+### 1) Install dependencies
+```bash
+npm install
+```
+
+### 2) Configure environment
+Create a `.env` in the project root:
+```env
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=gatepass_user
+DB_PASSWORD=your_db_password
+DB_NAME=360gatepass
+JWT_SECRET=change_me_local_dev
+```
+
+### 3) Initialize DB + seed users
+```bash
+npm run db:setup
+```
+
+### 4) Start the server
+```bash
+npm start
+```
+
+Open:
+```
+http://localhost:3000
+```
+
+## Demo Login Credentials
+
+Password for all accounts: `1234`
+
+- Guest: `REDACTED`
+- Host: `REDACTED`
+- Admin: `REDACTED`
+
+## Database Schema
+
+Schema file:
+```
+db/schema.sql
+```
+
+## API Summary (Project 2)
+
+Auth:
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `POST /api/auth/logout`
+- `GET /api/auth/me`
+
+Visits:
+- `POST /api/visits` (guest)
+- `GET /api/visits/me` (guest)
+- `GET /api/visits/host` (host)
+- `PUT /api/visits/:visitId/approve` (host)
+- `PUT /api/visits/:visitId/reject` (host)
+
+Passes:
+- `POST /api/passes` (security)
+- `POST /api/passes/check-in` (security)
+- `POST /api/passes/check-out` (security)
+- `GET /api/passes/active-guests` (security)
+- `GET /api/visits/approved` (security)
+
+Admin:
+- `GET /api/admin/users` (admin)
+- `PATCH /api/admin/users/:id/role` (admin)
+- `GET /api/admin/reports` (admin)
+
 ## Testing Infrastructure
 
 This project uses **Jest** and **Supertest** for comprehensive testing across unit, integration, and API endpoints.

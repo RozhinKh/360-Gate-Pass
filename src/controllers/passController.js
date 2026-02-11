@@ -301,7 +301,7 @@ const checkIn = async (req, res) => {
     const passResult = await db.query(
       `SELECT p.id, p.visit_id, p.pass_code, p.issue_date, p.expiry_date, p.status, p.access_level, p.issued_by,
               p.created_at, p.updated_at,
-              v.purpose, v.status as visitStatus, v.guest_id, v.host_id
+              v.purpose, v.status as visit_status, v.guest_id, v.host_id
        FROM passes p
        JOIN visits v ON p.visit_id = v.id
        WHERE p.pass_code = $1`,
@@ -318,10 +318,10 @@ const checkIn = async (req, res) => {
     pass = passResult.rows[0];
 
     // Verify visit is approved
-    if (pass.visitStatus !== 'approved') {
+    if (pass.visit_status !== 'approved') {
       return res.status(400).json({
         error: 'Bad Request',
-        message: `Visit must be approved for check-in. Current status: ${pass.visitStatus}`
+        message: `Visit must be approved for check-in. Current status: ${pass.visit_status}`
       });
     }
 
@@ -352,23 +352,23 @@ const checkIn = async (req, res) => {
 
     if (pass.guest_id) {
       const guestResult = await db.query(
-        'SELECT firstname, lastname FROM users WHERE id = $1',
+        'SELECT first_name, last_name FROM users WHERE id = $1',
         [pass.guest_id]
       );
       if (guestResult.rows.length > 0) {
         const guest = guestResult.rows[0];
-        guestName = `${guest.firstname} ${guest.lastname}`;
+        guestName = `${guest.first_name} ${guest.last_name}`;
       }
     }
 
     if (pass.host_id) {
       const hostResult = await db.query(
-        'SELECT firstname, lastname FROM users WHERE id = $1',
+        'SELECT first_name, last_name FROM users WHERE id = $1',
         [pass.host_id]
       );
       if (hostResult.rows.length > 0) {
         const host = hostResult.rows[0];
-        hostName = `${host.firstname} ${host.lastname}`;
+        hostName = `${host.first_name} ${host.last_name}`;
       }
     }
 
@@ -474,7 +474,7 @@ const checkOut = async (req, res) => {
     const passResult = await db.query(
       `SELECT p.id, p.visit_id, p.pass_code, p.issue_date, p.expiry_date, p.status, p.access_level, p.issued_by,
               p.created_at, p.updated_at,
-              v.purpose, v.status as visitStatus, v.guest_id, v.host_id
+              v.purpose, v.status as visit_status, v.guest_id, v.host_id
        FROM passes p
        JOIN visits v ON p.visit_id = v.id
        WHERE p.pass_code = $1`,
@@ -518,23 +518,23 @@ const checkOut = async (req, res) => {
 
     if (pass.guest_id) {
       const guestResult = await db.query(
-        'SELECT firstname, lastname FROM users WHERE id = $1',
+        'SELECT first_name, last_name FROM users WHERE id = $1',
         [pass.guest_id]
       );
       if (guestResult.rows.length > 0) {
         const guest = guestResult.rows[0];
-        guestName = `${guest.firstname} ${guest.lastname}`;
+        guestName = `${guest.first_name} ${guest.last_name}`;
       }
     }
 
     if (pass.host_id) {
       const hostResult = await db.query(
-        'SELECT firstname, lastname FROM users WHERE id = $1',
+        'SELECT first_name, last_name FROM users WHERE id = $1',
         [pass.host_id]
       );
       if (hostResult.rows.length > 0) {
         const host = hostResult.rows[0];
-        hostName = `${host.firstname} ${host.lastname}`;
+        hostName = `${host.first_name} ${host.last_name}`;
       }
     }
 
@@ -620,7 +620,7 @@ const getActiveGuests = async (req, res) => {
     // Add search filter for guest name and pass code (case-insensitive)
     if (search) {
       const searchPattern = `%${search}%`;
-      whereConditions += ` AND (u_guest.firstname || ' ' || u_guest.lastname ILIKE $${params.length + 1} OR p.pass_code ILIKE $${params.length + 2})`;
+      whereConditions += ` AND (u_guest.first_name || ' ' || u_guest.last_name ILIKE $${params.length + 1} OR p.pass_code ILIKE $${params.length + 2})`;
       params.push(searchPattern, searchPattern);
     }
 
@@ -649,10 +649,10 @@ const getActiveGuests = async (req, res) => {
         p.id as pass_id,
         p.pass_code as pass_code,
         u_guest.id as guest_id,
-        u_guest.firstname || ' ' || u_guest.lastname as guest_name,
+        u_guest.first_name || ' ' || u_guest.last_name as guest_name,
         u_guest.email as guest_email,
         u_guest.phone as guest_phone,
-        u_host.firstname || ' ' || u_host.lastname as host_name,
+        u_host.first_name || ' ' || u_host.last_name as host_name,
         v.purpose as visit_purpose
        FROM entry_logs el
        JOIN passes p ON el.pass_id = p.id
@@ -730,7 +730,7 @@ const getApprovedVisits = async (req, res) => {
     // Add search filter by guest name (case-insensitive partial match)
     if (search) {
       const paramIndex = params.length + 1;
-      whereConditions += ` AND u_guest.firstname || ' ' || u_guest.lastname ILIKE $${paramIndex}`;
+      whereConditions += ` AND u_guest.first_name || ' ' || u_guest.last_name ILIKE $${paramIndex}`;
       params.push(`%${search}%`);
     }
 
@@ -764,11 +764,11 @@ const getApprovedVisits = async (req, res) => {
         v.status,
         v.created_at as created_at,
         u_guest.id as guest_id,
-        u_guest.firstname || ' ' || u_guest.lastname as guest_name,
+        u_guest.first_name || ' ' || u_guest.last_name as guest_name,
         u_guest.email as guest_email,
         u_guest.phone as guest_phone,
         u_host.id as host_id,
-        u_host.firstname || ' ' || u_host.lastname as host_name
+        u_host.first_name || ' ' || u_host.last_name as host_name
        FROM visits v
        LEFT JOIN users u_guest ON v.guest_id = u_guest.id
        LEFT JOIN users u_host ON v.host_id = u_host.id

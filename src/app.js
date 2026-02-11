@@ -40,6 +40,26 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(frontendPath, 'pages', 'login.html'));
 });
 
+// Legacy dashboard paths (backward compatibility)
+app.get('/admin-dashboard.html', (req, res) => {
+  res.sendFile(path.join(frontendPath, 'pages', 'admin-dashboard.html'));
+});
+app.get('/host-dashboard.html', (req, res) => {
+  res.sendFile(path.join(frontendPath, 'pages', 'host-dashboard.html'));
+});
+app.get('/guest-dashboard.html', (req, res) => {
+  res.sendFile(path.join(frontendPath, 'pages', 'guest-dashboard.html'));
+});
+app.get('/security-dashboard.html', (req, res) => {
+  res.sendFile(path.join(frontendPath, 'pages', 'security-dashboard.html'));
+});
+app.get('/login.html', (req, res) => {
+  res.sendFile(path.join(frontendPath, 'pages', 'login.html'));
+});
+app.get('/register.html', (req, res) => {
+  res.sendFile(path.join(frontendPath, 'pages', 'register.html'));
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({

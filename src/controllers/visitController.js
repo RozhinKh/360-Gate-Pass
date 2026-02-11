@@ -34,18 +34,11 @@ const createVisit = async (req, res) => {
       });
     }
 
-    // Validate purpose: non-empty string, max 500 characters
+    // Validate purpose: non-empty string
     if (typeof purpose !== 'string' || purpose.trim().length === 0) {
       return res.status(400).json({
         error: 'Bad Request',
         details: ['purpose must be a non-empty string']
-      });
-    }
-
-    if (purpose.length > 500) {
-      return res.status(400).json({
-        error: 'Bad Request',
-        details: ['purpose must not exceed 500 characters']
       });
     }
 

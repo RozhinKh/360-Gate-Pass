@@ -21,9 +21,20 @@ const authenticate = (req, res, next) => {
     if (authHeader && authHeader.startsWith('Bearer ')) {
       token = authHeader.substring(7);
     }
-    // Fallback to cookies
-    else if (req.cookies && req.cookies.token) {
-      token = req.cookies.token;
+    // Fallback to cookies (manual parse to avoid extra dependency)
+    else if (req.headers.cookie) {
+      const cookieHeader = req.headers.cookie;
+      const cookies = cookieHeader.split(';').reduce((acc, pair) => {
+        const idx = pair.indexOf('=');
+        if (idx === -1) return acc;
+        const key = pair.slice(0, idx).trim();
+        const val = pair.slice(idx + 1).trim();
+        acc[key] = val;
+        return acc;
+      }, {});
+      if (cookies.token) {
+        token = cookies.token;
+      }
     }
 
     if (!token) {

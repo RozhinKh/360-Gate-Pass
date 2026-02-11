@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS visits (
   guest_email VARCHAR(255),                      -- Guest's email (optional)
   guest_phone VARCHAR(20),                       -- Guest's phone (optional)
   -- Visit details
-  purpose VARCHAR(255),                          -- Purpose of visit (optional)
+  purpose TEXT,                                  -- Purpose of visit (optional)
   visit_date DATE,                               -- Scheduled visit date (optional)
   visit_time TIME,                               -- Scheduled visit time (optional)
   expected_duration VARCHAR(100),                -- Expected duration (optional)
