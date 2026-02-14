@@ -44,6 +44,13 @@ describe('Authorization & Error Handling', () => {
   });
 
   beforeEach(async () => {
+    const loginAndGetToken = async (email, password) => {
+      const loginRes = await request(app)
+        .post('/api/auth/login')
+        .send({ email, password });
+      return loginRes.body.token;
+    };
+
     // Register users with different roles
     const guestReg = await request(app)
       .post('/api/auth/register')
@@ -55,7 +62,7 @@ describe('Authorization & Error Handling', () => {
       });
 
     guestUser = guestReg.body.user;
-    guestToken = guestReg.body.token;
+    guestToken = await loginAndGetToken('guest-auth@example.com', 'GuestPassword123');
 
     const hostReg = await request(app)
       .post('/api/auth/register')
@@ -67,8 +74,8 @@ describe('Authorization & Error Handling', () => {
       });
 
     hostUser = hostReg.body.user;
-    hostToken = hostReg.body.token;
     await executeQuery('UPDATE users SET role = $1 WHERE id = $2', ['Host', hostUser.id]);
+    hostToken = await loginAndGetToken('host-auth@example.com', 'HostPassword123');
 
     const securityReg = await request(app)
       .post('/api/auth/register')
@@ -80,8 +87,8 @@ describe('Authorization & Error Handling', () => {
       });
 
     securityUser = securityReg.body.user;
-    securityToken = securityReg.body.token;
     await executeQuery('UPDATE users SET role = $1 WHERE id = $2', ['Security', securityUser.id]);
+    securityToken = await loginAndGetToken('security-auth@example.com', 'SecurityPassword123');
 
     const adminReg = await request(app)
       .post('/api/auth/register')
@@ -93,8 +100,8 @@ describe('Authorization & Error Handling', () => {
       });
 
     adminUser = adminReg.body.user;
-    adminToken = adminReg.body.token;
     await executeQuery('UPDATE users SET role = $1 WHERE id = $2', ['Admin', adminUser.id]);
+    adminToken = await loginAndGetToken('admin-auth@example.com', 'AdminPassword123');
   });
 
   describe('Visit Authorization', () => {
@@ -109,12 +116,9 @@ describe('Authorization & Error Handling', () => {
         .post('/api/visits')
         .set('Authorization', `Bearer ${guestToken}`)
         .send({
-          hostId: hostUser.id,
-          guestName: 'Test Guest',
-          guestEmail: 'testguest@example.com',
+          host_id: hostUser.id,
           purpose: 'Meeting',
-          visitDate: visitDate.toISOString().split('T')[0],
-          visitTime: '10:00'
+          visit_date: visitDate.toISOString().split('T')[0]
         });
 
       visitId = createVisitResponse.body.visit.id;
@@ -122,7 +126,7 @@ describe('Authorization & Error Handling', () => {
 
     it('should reject guest attempting to approve visit (403 Forbidden)', async () => {
       const response = await request(app)
-        .put(`/api/visits/${visitId}/approve`)
+        .patch(`/api/visits/${visitId}/approve`)
         .set('Authorization', `Bearer ${guestToken}`);
 
       expect(response.status).toBe(403);
@@ -131,7 +135,7 @@ describe('Authorization & Error Handling', () => {
 
     it('should reject security user attempting to approve visit (403 Forbidden)', async () => {
       const response = await request(app)
-        .put(`/api/visits/${visitId}/approve`)
+        .patch(`/api/visits/${visitId}/approve`)
         .set('Authorization', `Bearer ${securityToken}`);
 
       expect(response.status).toBe(403);
@@ -140,7 +144,7 @@ describe('Authorization & Error Handling', () => {
 
     it('should allow host to approve assigned visit', async () => {
       const response = await request(app)
-        .put(`/api/visits/${visitId}/approve`)
+        .patch(`/api/visits/${visitId}/approve`)
         .set('Authorization', `Bearer ${hostToken}`);
 
       expect(response.status).toBe(200);
@@ -160,10 +164,16 @@ describe('Authorization & Error Handling', () => {
 
       const otherHostToken = otherHostReg.body.token;
       await executeQuery('UPDATE users SET role = $1 WHERE id = $2', ['Host', otherHostReg.body.user.id]);
+      const otherHostLogin = await request(app)
+        .post('/api/auth/login')
+        .send({
+          email: 'other-host-auth@example.com',
+          password: 'OtherHostPassword123'
+        });
 
       const response = await request(app)
-        .put(`/api/visits/${visitId}/approve`)
-        .set('Authorization', `Bearer ${otherHostToken}`);
+        .patch(`/api/visits/${visitId}/approve`)
+        .set('Authorization', `Bearer ${otherHostLogin.body.token}`);
 
       expect(response.status).toBe(403);
       expect(response.body.message).toContain('assigned host');
@@ -182,19 +192,16 @@ describe('Authorization & Error Handling', () => {
         .post('/api/visits')
         .set('Authorization', `Bearer ${guestToken}`)
         .send({
-          hostId: hostUser.id,
-          guestName: 'Test Guest',
-          guestEmail: 'testguest@example.com',
+          host_id: hostUser.id,
           purpose: 'Meeting',
-          visitDate: visitDate.toISOString().split('T')[0],
-          visitTime: '10:00'
+          visit_date: visitDate.toISOString().split('T')[0]
         });
 
       visitId = createVisitResponse.body.visit.id;
 
       // Approve the visit
       await request(app)
-        .put(`/api/visits/${visitId}/approve`)
+        .patch(`/api/visits/${visitId}/approve`)
         .set('Authorization', `Bearer ${hostToken}`);
     });
 
@@ -333,7 +340,7 @@ describe('Authorization & Error Handling', () => {
 
     it('should reject non-admin attempting to change user role (403 Forbidden)', async () => {
       const response = await request(app)
-        .put(`/api/admin/users/${guestUser.id}/role`)
+        .patch(`/api/admin/users/${guestUser.id}/role`)
         .set('Authorization', `Bearer ${hostToken}`)
         .send({
           role: 'Host'
@@ -345,7 +352,7 @@ describe('Authorization & Error Handling', () => {
 
     it('should allow admin to change user role', async () => {
       const response = await request(app)
-        .put(`/api/admin/users/${guestUser.id}/role`)
+        .patch(`/api/admin/users/${guestUser.id}/role`)
         .set('Authorization', `Bearer ${adminToken}`)
         .send({
           role: 'Host'
@@ -380,11 +387,9 @@ describe('Authorization & Error Handling', () => {
         .post('/api/visits')
         .set('Authorization', `Bearer ${guestToken}`)
         .send({
-          hostId: 'not-a-number', // Should be numeric
-          guestName: 'Test',
-          guestEmail: 'invalid-email', // Invalid email format
+          host_id: 'not-a-number', // Should be numeric
           purpose: 'Meeting',
-          visitDate: 'not-a-date' // Invalid date format
+          visit_date: 'not-a-date' // Invalid date format
         });
 
       expect(response.status).toBe(400);
@@ -423,7 +428,7 @@ describe('Authorization & Error Handling', () => {
 
       // GET visits endpoint returns list, so we test approve instead
       const approveResponse = await request(app)
-        .put('/api/visits/99999/approve')
+        .patch('/api/visits/99999/approve')
         .set('Authorization', `Bearer ${hostToken}`);
 
       expect(approveResponse.status).toBe(404);
@@ -432,7 +437,7 @@ describe('Authorization & Error Handling', () => {
 
     it('should return 404 for non-existent user role update', async () => {
       const response = await request(app)
-        .put('/api/admin/users/99999/role')
+        .patch('/api/admin/users/99999/role')
         .set('Authorization', `Bearer ${adminToken}`)
         .send({
           role: 'Host'
@@ -494,12 +499,9 @@ describe('Authorization & Error Handling', () => {
         .post('/api/visits')
         .set('Authorization', `Bearer ${guestToken}`)
         .send({
-          hostId: hostUser.id,
-          guestName: 'Test',
-          guestEmail: 'test@example.com',
+          host_id: hostUser.id,
           purpose: 'Meeting',
-          visitDate: visitDate.toISOString().split('T')[0],
-          visitTime: '10:00'
+          visit_date: visitDate.toISOString().split('T')[0]
         });
 
       expect(guestResponse.status).toBe(201);
@@ -509,12 +511,9 @@ describe('Authorization & Error Handling', () => {
         .post('/api/visits')
         .set('Authorization', `Bearer ${hostToken}`)
         .send({
-          hostId: hostUser.id,
-          guestName: 'Test',
-          guestEmail: 'test@example.com',
+          host_id: hostUser.id,
           purpose: 'Meeting',
-          visitDate: visitDate.toISOString().split('T')[0],
-          visitTime: '10:00'
+          visit_date: visitDate.toISOString().split('T')[0]
         });
 
       expect(hostResponse.status).toBe(403);

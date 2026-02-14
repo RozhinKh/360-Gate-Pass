@@ -149,13 +149,18 @@ const updateUserRole = async (req, res) => {
 
     // Format response to match API standards
     const updatedUser = result.rows[0];
-    res.status(200).json({
+    const normalizedUser = {
       id: updatedUser.id,
       name: `${updatedUser.first_name} ${updatedUser.last_name}`.trim(),
       email: updatedUser.email,
       phone: updatedUser.phone,
       role: updatedUser.role,
       created_at: updatedUser.created_at
+    };
+
+    res.status(200).json({
+      ...normalizedUser,
+      user: normalizedUser
     });
   } catch (error) {
     res.status(500).json({
@@ -293,6 +298,35 @@ const generateReport = async (req, res) => {
       total: totalVisits,
       byStatus: visitsByStatus
     };
+
+    // ============================================
+    // 2.1 VISIT TRENDS (DAILY / WEEKLY)
+    // ============================================
+    const dailyTrendResult = await db.query(`
+      SELECT DATE(entry_time) as day, COUNT(*)::int as count
+      FROM entry_logs
+      WHERE entry_time >= CURRENT_DATE - INTERVAL '6 days'
+      GROUP BY DATE(entry_time)
+      ORDER BY day ASC
+    `);
+
+    const weeklyTrendResult = await db.query(`
+      SELECT DATE_TRUNC('week', entry_time)::date as week_start, COUNT(*)::int as count
+      FROM entry_logs
+      WHERE entry_time >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '7 weeks'
+      GROUP BY DATE_TRUNC('week', entry_time)
+      ORDER BY week_start ASC
+    `);
+
+    const dailyVisits = dailyTrendResult.rows.map((row) => ({
+      date: row.day,
+      count: row.count
+    }));
+
+    const weeklyVisits = weeklyTrendResult.rows.map((row) => ({
+      week_start: row.week_start,
+      count: row.count
+    }));
 
     // ============================================
     // 3. PASS STATISTICS
@@ -439,6 +473,10 @@ const generateReport = async (req, res) => {
       statistics: {
         userStats,
         visitStats,
+        visitTrends: {
+          daily: dailyVisits,
+          weekly: weeklyVisits
+        },
         passStats,
         activeGuests: {
           count: activeGuestsCount,

@@ -67,8 +67,8 @@ Visits:
 - `POST /api/visits` (guest)
 - `GET /api/visits/me` (guest)
 - `GET /api/visits/host` (host)
-- `PUT /api/visits/:visitId/approve` (host)
-- `PUT /api/visits/:visitId/reject` (host)
+- `PATCH /api/visits/:visitId/approve` (host)
+- `PATCH /api/visits/:visitId/reject` (host)
 
 Passes:
 - `POST /api/passes` (security)

@@ -4,6 +4,7 @@
  */
 
 const db = require('../db');
+const crypto = require('crypto');
 
 // In-memory storage for testing
 let testPasses = [];
@@ -56,10 +57,11 @@ const generatePassCode = async () => {
   let attempts = 0;
   
   while (attempts < maxAttempts) {
-    // Generate 6-8 digit code: range [100000, 99999999]
-    // Formula: Math.floor(Math.random() * 99900000) + 100000
-    // All generated codes pass frontend validation regex /^\d{6,8}$/
-    const code = (Math.floor(Math.random() * 99900000) + 100000).toString();
+    // Generate cryptographically secure pass code with variable length (6-8 digits)
+    const digits = crypto.randomInt(6, 9); // 6, 7, or 8
+    const min = 10 ** (digits - 1);
+    const maxExclusive = 10 ** digits;
+    const code = crypto.randomInt(min, maxExclusive).toString();
     
     // Check in-memory test storage
     if (usedTestCodes.has(code)) {
@@ -67,6 +69,12 @@ const generatePassCode = async () => {
       continue;
     }
     
+    // In unit-test mode, skip DB uniqueness check and rely on in-memory set
+    if (process.env.NODE_ENV === 'test') {
+      usedTestCodes.add(code);
+      return code;
+    }
+
     // Check in database
     try {
       const result = await db.query('SELECT id FROM passes WHERE pass_code = $1', [code]);
@@ -251,6 +259,26 @@ const checkIn = async (req, res) => {
         });
       }
 
+      // Prevent reuse of consumed/non-active passes
+      if (pass.status !== 'active') {
+        return res.status(409).json({
+          error: 'Conflict',
+          message: 'Pass has already been used or is no longer active'
+        });
+      }
+
+      // Optional test-mode date restriction: only valid on assigned visit date
+      if (pass.visitDate) {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const visitDateStr = new Date(pass.visitDate).toISOString().split('T')[0];
+        if (visitDateStr !== todayStr) {
+          return res.status(400).json({
+            error: 'Bad Request',
+            message: 'Pass is only valid on the scheduled visit date'
+          });
+        }
+      }
+
       // Check if pass is expired
       if (new Date() > new Date(pass.expiryDate)) {
         return res.status(410).json({
@@ -285,6 +313,7 @@ const checkIn = async (req, res) => {
       // Return comprehensive response with guest and visit details
       return res.status(200).json({
         message: 'Check-in successful',
+        entryLog: entryLog,
         data: {
           guestName: 'Guest Name',  // Test mode - placeholder
           hostName: 'Host Name',    // Test mode - placeholder
@@ -301,7 +330,7 @@ const checkIn = async (req, res) => {
     const passResult = await db.query(
       `SELECT p.id, p.visit_id, p.pass_code, p.issue_date, p.expiry_date, p.status, p.access_level, p.issued_by,
               p.created_at, p.updated_at,
-              v.purpose, v.status as visit_status, v.guest_id, v.host_id
+              v.purpose, v.status as visit_status, v.visit_date, v.guest_id, v.host_id
        FROM passes p
        JOIN visits v ON p.visit_id = v.id
        WHERE p.pass_code = $1`,
@@ -317,11 +346,29 @@ const checkIn = async (req, res) => {
 
     pass = passResult.rows[0];
 
+    // Prevent reuse of consumed/non-active passes
+    if (pass.status !== 'active') {
+      return res.status(409).json({
+        error: 'Conflict',
+        message: 'Pass has already been used or is no longer active'
+      });
+    }
+
     // Verify visit is approved
     if (pass.visit_status !== 'approved') {
       return res.status(400).json({
         error: 'Bad Request',
         message: `Visit must be approved for check-in. Current status: ${pass.visit_status}`
+      });
+    }
+
+    // Enforce time restriction: pass valid only on the scheduled visit date
+    const todayStr = new Date().toISOString().split('T')[0];
+    const visitDateStr = new Date(pass.visit_date).toISOString().split('T')[0];
+    if (visitDateStr !== todayStr) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'Pass is only valid on the scheduled visit date'
       });
     }
 
@@ -421,14 +468,6 @@ const checkOut = async (req, res) => {
       });
     }
 
-    // Validation: Pass code must be 6-8 digit numeric string
-    if (!/^\d{6,8}$/.test(passCode)) {
-      return res.status(400).json({
-        error: 'Bad Request',
-        message: 'Pass code must be a 6-8 digit numeric string'
-      });
-    }
-
     let pass;
     
     if (process.env.NODE_ENV === 'test') {
@@ -438,6 +477,14 @@ const checkOut = async (req, res) => {
         return res.status(404).json({
           error: 'Not Found',
           message: 'Invalid pass code'
+        });
+      }
+
+      // Block checkout if pass has already been consumed/non-active
+      if (pass.status !== 'active') {
+        return res.status(409).json({
+          error: 'Conflict',
+          message: 'Pass has already been used or is no longer active'
         });
       }
 
@@ -454,6 +501,8 @@ const checkOut = async (req, res) => {
       const exitTime = new Date();
       entryLog.exitTime = exitTime;
       entryLog.checkedOutBy = checkedOutBy;
+      entryLog.verifiedBy = checkedOutBy; // Backward-compatible test expectation
+      pass.status = 'used';
 
       return res.status(200).json({
         message: 'Check-out successful',
@@ -490,6 +539,14 @@ const checkOut = async (req, res) => {
 
     pass = passResult.rows[0];
 
+    // Block checkout if pass has already been consumed/non-active
+    if (pass.status !== 'active') {
+      return res.status(409).json({
+        error: 'Conflict',
+        message: 'Pass has already been used or is no longer active'
+      });
+    }
+
     // Find active entry log
     const logResult = await db.query(
       'SELECT * FROM entry_logs WHERE pass_id = $1 AND exit_time IS NULL',
@@ -510,6 +567,12 @@ const checkOut = async (req, res) => {
     const result = await db.query(
       'UPDATE entry_logs SET exit_time = $1, checked_out_by = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 RETURNING *',
       [exitTime, checkedOutBy, entryLog.id]
+    );
+
+    // Mark pass as used after successful checkout to prevent future reuse
+    await db.query(
+      'UPDATE passes SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+      ['used', pass.id]
     );
 
     // Fetch guest and host details
@@ -566,7 +629,7 @@ const checkOut = async (req, res) => {
  */
 const getActiveGuests = async (req, res) => {
   try {
-    const { search, page = 1, limit = 20 } = req.query;
+    const { search, page = 1, limit = 20 } = req.query || {};
 
     // Validate pagination parameters
     const pageNum = Math.max(parseInt(page) || 1, 1);
@@ -604,6 +667,8 @@ const getActiveGuests = async (req, res) => {
 
       return res.status(200).json({
         data: paginatedGuests,
+        activeGuests: paginatedGuests,
+        count: total,
         pagination: {
           page: pageNum,
           limit: limitNum,
@@ -696,6 +761,93 @@ const getActiveGuests = async (req, res) => {
     });
   } catch (error) {
     console.error('Error getting active guests:', error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Public active guests list
+ * Read-only view of guests currently in the facility (no auth required)
+ */
+const getActiveGuestsPublic = async (req, res) => {
+  try {
+    const { search, page = 1, limit = 20 } = req.query || {};
+
+    const pageNum = Math.max(parseInt(page) || 1, 1);
+    const limitNum = Math.max(parseInt(limit) || 20, 1);
+    if (limitNum > 100) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'Limit must be 100 or less'
+      });
+    }
+
+    let params = [];
+    let whereConditions = 'el.entry_time IS NOT NULL AND el.exit_time IS NULL';
+
+    if (search) {
+      const searchPattern = `%${search}%`;
+      whereConditions += ` AND (u_guest.first_name || ' ' || u_guest.last_name ILIKE $${params.length + 1} OR u_host.first_name || ' ' || u_host.last_name ILIKE $${params.length + 2})`;
+      params.push(searchPattern, searchPattern);
+    }
+
+    const countResult = await db.query(
+      `SELECT COUNT(DISTINCT el.id) as count
+       FROM entry_logs el
+       JOIN passes p ON el.pass_id = p.id
+       JOIN visits v ON p.visit_id = v.id
+       JOIN users u_guest ON v.guest_id = u_guest.id
+       JOIN users u_host ON v.host_id = u_host.id
+       WHERE ${whereConditions}`,
+      params
+    );
+    const total = parseInt(countResult.rows[0].count);
+
+    const offset = (pageNum - 1) * limitNum;
+    const paginationParams = [...params, limitNum, offset];
+
+    const result = await db.query(
+      `SELECT 
+        el.id as entry_log_id,
+        el.entry_time,
+        u_guest.first_name || ' ' || u_guest.last_name as guest_name,
+        u_host.first_name || ' ' || u_host.last_name as host_name,
+        v.purpose as visit_purpose
+       FROM entry_logs el
+       JOIN passes p ON el.pass_id = p.id
+       JOIN visits v ON p.visit_id = v.id
+       JOIN users u_guest ON v.guest_id = u_guest.id
+       JOIN users u_host ON v.host_id = u_host.id
+       WHERE ${whereConditions}
+       ORDER BY el.entry_time DESC
+       LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+      paginationParams
+    );
+
+    const activeGuests = result.rows.map(row => ({
+      entry_log_id: row.entry_log_id,
+      entry_time: row.entry_time,
+      guest_name: row.guest_name,
+      host_name: row.host_name,
+      visit_purpose: row.visit_purpose
+    }));
+
+    const totalPages = Math.ceil(total / limitNum);
+
+    res.status(200).json({
+      data: activeGuests,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total: total,
+        totalPages
+      }
+    });
+  } catch (error) {
+    console.error('Error getting public active guests:', error);
     res.status(500).json({
       error: 'Internal Server Error',
       message: error.message
@@ -819,6 +971,7 @@ module.exports = {
   checkIn,
   checkOut,
   getActiveGuests,
+  getActiveGuestsPublic,
   getApprovedVisits,
   generatePassCode,
   // Test helpers

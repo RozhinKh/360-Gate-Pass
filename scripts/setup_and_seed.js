@@ -2,6 +2,7 @@
 const path = require('path');
 const { Client } = require('pg');
 const bcrypt = require('bcryptjs');
+require('dotenv').config();
 
 const DB_HOST = process.env.DB_HOST || 'localhost';
 const DB_PORT = parseInt(process.env.DB_PORT || '5432', 10);

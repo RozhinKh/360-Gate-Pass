@@ -132,6 +132,29 @@ CREATE TABLE IF NOT EXISTS entry_logs (
 );
 
 -- ============================================================================
+-- TABLE 5: VISIT_STATUS_HISTORY (BONUS)
+-- ============================================================================
+-- Purpose: Track every visit request status transition for auditability
+-- Fields required by project bonus:
+--   - request_id, old_status, new_status, changed_by, changed_at
+-- Relationships:
+--   - request_id -> visits(id)
+--   - changed_by -> users(id)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS visit_status_history (
+  id SERIAL PRIMARY KEY,
+  request_id INTEGER NOT NULL REFERENCES visits(id) ON DELETE CASCADE,
+  old_status VARCHAR(50),
+  new_status VARCHAR(50) NOT NULL,
+  changed_by INTEGER REFERENCES users(id),
+  changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_visit_status_history_request_id
+  ON visit_status_history(request_id);
+
+-- ============================================================================
 -- END OF SCHEMA
 -- ============================================================================
 -- Schema creation complete. Tables are ready for use.

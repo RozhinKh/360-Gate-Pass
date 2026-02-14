@@ -4,6 +4,10 @@
  */
 
 const API_BASE_URL = '/api';
+const getAuthHeaders = () => {
+  const token = sessionStorage.getItem('token');
+  return token ? { 'Authorization': `Bearer ${token}` } : {};
+};
 
 // ============================================================================
 // API Module
@@ -17,8 +21,8 @@ const API = {
     const response = await fetch(`${API_BASE_URL}/visits/approved`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        ...getAuthHeaders()
       }
     });
     
@@ -37,8 +41,8 @@ const API = {
     const response = await fetch(`${API_BASE_URL}/passes`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        ...getAuthHeaders()
       },
       body: JSON.stringify({ visitId })
     });
@@ -58,8 +62,8 @@ const API = {
     const response = await fetch(`${API_BASE_URL}/passes/check-in`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        ...getAuthHeaders()
       },
       body: JSON.stringify({ passCode })
     });
@@ -79,8 +83,8 @@ const API = {
     const response = await fetch(`${API_BASE_URL}/passes/check-out`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        ...getAuthHeaders()
       },
       body: JSON.stringify({ passCode })
     });
@@ -103,8 +107,8 @@ const API = {
     const response = await fetch(url, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        ...getAuthHeaders()
       }
     });
     
@@ -565,7 +569,7 @@ function stopAutoRefresh() {
 
 async function checkAuthAndRole() {
   try {
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('token');
     if (!token) {
       redirectToLogin();
       return false;
@@ -574,8 +578,8 @@ async function checkAuthAndRole() {
     const response = await fetch(`${API_BASE_URL}/auth/me`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        ...getAuthHeaders()
       }
     });
     
@@ -613,22 +617,16 @@ function redirectToLogin() {
 
 document.getElementById('logoutBtn')?.addEventListener('click', async () => {
   try {
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('token');
     if (token) {
-      await fetch(`${API_BASE_URL}/auth/logout`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      // Avoid clearing other tabs by not touching shared cookies
     }
   } catch (error) {
     console.error('Logout error:', error);
   } finally {
-    localStorage.removeItem('token');
-    localStorage.removeItem('userId');
-    localStorage.removeItem('userRole');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('userId');
+    sessionStorage.removeItem('userRole');
     window.location.href = '/pages/login.html';
   }
 });

@@ -91,6 +91,7 @@ describe('Frontend Error Handling', () => {
         email: 'email',
         password: 'password',
         name: 'text',
+        phone: 'tel',
       });
       errorContainer = createErrorContainer('validation-errors');
     });

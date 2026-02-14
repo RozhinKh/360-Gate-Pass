@@ -59,6 +59,9 @@ app.get('/login.html', (req, res) => {
 app.get('/register.html', (req, res) => {
   res.sendFile(path.join(frontendPath, 'pages', 'register.html'));
 });
+app.get('/active-guests.html', (req, res) => {
+  res.sendFile(path.join(frontendPath, 'pages', 'active-guests.html'));
+});
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -86,12 +89,12 @@ app.get('/api/auth/me', authenticate, authController.getCurrentUser);
 app.get('/api/users', authenticate, authController.getUsersByRole);
 
 // Visit routes
-app.post('/api/visits', authenticate, visitController.createVisit);
-app.get('/api/visits/me', authenticate, visitController.getGuestVisits);
-app.get('/api/visits/host', authenticate, visitController.getHostVisits);
+app.post('/api/visits', authenticate, requireRole(['Guest']), visitController.createVisit);
+app.get('/api/visits/me', authenticate, requireRole(['Guest']), visitController.getGuestVisits);
+app.get('/api/visits/host', authenticate, requireRole(['Host']), visitController.getHostVisits);
 app.get('/api/visits', authenticate, visitController.getVisits);
-app.put('/api/visits/:visitId/approve', authenticate, requireRole(['Host']), visitController.approveVisit);
-app.put('/api/visits/:visitId/reject', authenticate, requireRole(['Host']), visitController.rejectVisit);
+app.patch('/api/visits/:visitId/approve', authenticate, requireRole(['Host']), visitController.approveVisit);
+app.patch('/api/visits/:visitId/reject', authenticate, requireRole(['Host']), visitController.rejectVisit);
 
 // Pass routes
 app.post('/api/passes', authenticate, requireRole(['Security']), passController.issuePass);
@@ -99,6 +102,7 @@ app.post('/api/passes/check-in', authenticate, requireRole(['Security']), passCo
 app.post('/api/passes/check-out', authenticate, requireRole(['Security']), passController.checkOut);
 app.get('/api/passes/active-guests', authenticate, requireRole(['Security']), passController.getActiveGuests);
 app.get('/api/visits/approved', authenticate, requireRole(['Security']), passController.getApprovedVisits);
+app.get('/public/active-guests', passController.getActiveGuestsPublic);
 
 // Admin routes
 app.get('/api/admin/users', authenticate, requireRole(['Admin']), adminController.listUsers);

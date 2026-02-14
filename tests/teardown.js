@@ -4,10 +4,14 @@
  */
 
 module.exports = async () => {
-  // Close any open handles
-  // Database connections should be closed by individual test suites
-  // This is a placeholder for any global cleanup needed
-  
-  // Wait a bit for any pending operations to complete
+  try {
+    const db = require('../src/db');
+    if (db && typeof db.closePool === 'function') {
+      await db.closePool();
+    }
+  } catch (error) {
+    // Ignore teardown errors to avoid masking test results
+  }
+
   await new Promise(resolve => setTimeout(resolve, 100));
 };

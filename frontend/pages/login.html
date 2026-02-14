@@ -289,10 +289,10 @@
         sessionStorage.setItem('userName', user.firstName || user.email);
         sessionStorage.setItem('userEmail', user.email);
 
-        // Store token for dashboards that use Authorization header
+        // Store token per-tab for role switching in different tabs
         if (data.token) {
-          localStorage.setItem('token', data.token);
-          localStorage.setItem('userRole', user.role);
+          sessionStorage.setItem('token', data.token);
+          sessionStorage.setItem('userRole', user.role);
         }
 
         // Show success message
@@ -327,8 +327,8 @@
       setupFieldValidation();
       document.getElementById('loginForm').addEventListener('submit', handleLogin);
 
-      const token = localStorage.getItem('token');
-      const role = sessionStorage.getItem('userRole') || localStorage.getItem('userRole');
+      const token = sessionStorage.getItem('token');
+      const role = sessionStorage.getItem('userRole');
       if (token && role) {
         document.getElementById('alreadySignedIn').classList.remove('hidden');
         document.getElementById('loginForm').classList.add('hidden');
@@ -346,12 +346,12 @@
         });
         signOutBtn.addEventListener('click', async () => {
           try {
-            await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+            // Avoid clearing other tabs by not touching shared cookies
           } catch (e) {
             // ignore
           } finally {
-            localStorage.removeItem('token');
-            localStorage.removeItem('userRole');
+            sessionStorage.removeItem('token');
+            sessionStorage.removeItem('userRole');
             sessionStorage.clear();
             window.location.reload();
           }

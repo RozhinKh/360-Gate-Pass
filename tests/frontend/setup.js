@@ -50,6 +50,29 @@ Object.defineProperty(window, 'sessionStorage', {
 // Mock fetch globally
 global.fetch = jest.fn();
 
+// Provide Response in jsdom tests when not available
+if (typeof global.Response === 'undefined') {
+  class MockResponse {
+    constructor(body = '', init = {}) {
+      this._body = body;
+      this.status = init.status || 200;
+      this.ok = typeof init.ok === 'boolean' ? init.ok : this.status >= 200 && this.status < 300;
+      this.headers = init.headers || {};
+    }
+
+    async json() {
+      return typeof this._body === 'string' ? JSON.parse(this._body || '{}') : this._body;
+    }
+
+    async text() {
+      return typeof this._body === 'string' ? this._body : JSON.stringify(this._body);
+    }
+  }
+
+  global.Response = MockResponse;
+  window.Response = MockResponse;
+}
+
 // Mock window.location
 delete window.location;
 window.location = { href: '', pathname: '', reload: jest.fn(), replace: jest.fn() };

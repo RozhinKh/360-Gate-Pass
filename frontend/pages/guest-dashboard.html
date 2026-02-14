@@ -132,9 +132,12 @@
             <h1 class="text-2xl font-bold text-gray-900">360GatePass</h1>
             <span class="text-gray-500 text-sm">Guest Dashboard</span>
           </div>
-          <button id="logoutBtn" class="text-gray-600 hover:text-gray-900 text-sm font-medium transition">
-            Logout
-          </button>
+          <div class="flex items-center gap-4">
+            <a href="/active-guests.html" class="text-blue-600 hover:text-blue-700 text-sm font-medium">Public Active Guests</a>
+            <button id="logoutBtn" class="text-gray-600 hover:text-gray-900 text-sm font-medium transition">
+              Logout
+            </button>
+          </div>
         </div>
       </div>
     </nav>
@@ -256,6 +259,10 @@
   <script>
     // API Base URL
     const API_BASE = '/api';
+    const getAuthHeaders = () => {
+      const token = sessionStorage.getItem('token');
+      return token ? { 'Authorization': `Bearer ${token}` } : {};
+    };
 
     // State management
     let currentUser = null;
@@ -292,9 +299,9 @@
       try {
         const response = await fetch(`${API_BASE}/auth/me`, {
           method: 'GET',
-          credentials: 'include',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            ...getAuthHeaders()
           }
         });
 
@@ -329,9 +336,9 @@
       try {
         const response = await fetch(`${API_BASE}/users?role=Host`, {
           method: 'GET',
-          credentials: 'include',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            ...getAuthHeaders()
           }
         });
 
@@ -381,9 +388,9 @@
 
         const response = await fetch(`${API_BASE}/visits/me`, {
           method: 'GET',
-          credentials: 'include',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            ...getAuthHeaders()
           }
         });
 
@@ -667,9 +674,9 @@
 
         const response = await fetch(`${API_BASE}/visits`, {
           method: 'POST',
-          credentials: 'include',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            ...getAuthHeaders()
           },
           body: JSON.stringify({
             host_id: parseInt(hostId),
@@ -781,20 +788,17 @@
      */
     const handleLogout = async () => {
       try {
-        const response = await fetch(`${API_BASE}/auth/logout`, {
-          method: 'POST',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
+        // Avoid clearing other tabs by not touching shared cookies
 
         if (response.ok) {
           window.location.href = 'login.html';
         }
       } catch (error) {
         console.error('Logout error:', error);
-        // Still redirect even if logout fails
+      } finally {
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('userId');
+        sessionStorage.removeItem('userRole');
         window.location.href = 'login.html';
       }
     };

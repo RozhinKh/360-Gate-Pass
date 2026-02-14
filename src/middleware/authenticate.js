@@ -21,7 +21,11 @@ const authenticate = (req, res, next) => {
     if (authHeader && authHeader.startsWith('Bearer ')) {
       token = authHeader.substring(7);
     }
-    // Fallback to cookies (manual parse to avoid extra dependency)
+    // Fallback to cookie parser output if available
+    else if (req.cookies && req.cookies.token) {
+      token = req.cookies.token;
+    }
+    // Fallback to raw cookie header (manual parse to avoid extra dependency)
     else if (req.headers.cookie) {
       const cookieHeader = req.headers.cookie;
       const cookies = cookieHeader.split(';').reduce((acc, pair) => {
@@ -40,7 +44,7 @@ const authenticate = (req, res, next) => {
     if (!token) {
       return res.status(401).json({
         error: 'Unauthorized',
-        message: 'Authentication required'
+        message: 'No token provided'
       });
     }
 

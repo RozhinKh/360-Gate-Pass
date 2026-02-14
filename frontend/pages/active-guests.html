@@ -1,0 +1,93 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Active Guests - 360GatePass</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50">
+  <div class="min-h-screen px-4 py-8">
+    <div class="max-w-5xl mx-auto">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h1 class="text-2xl font-bold text-gray-900">Active Guests</h1>
+          <p class="text-gray-600">Public list of guests currently inside</p>
+        </div>
+        <a href="/login.html" class="text-blue-600 hover:text-blue-700 text-sm">Login</a>
+      </div>
+
+      <div class="bg-white rounded-lg shadow p-4 mb-4">
+        <div class="flex items-center gap-2">
+          <input id="search" type="text" placeholder="Search guest or host name..." class="flex-1 px-3 py-2 border border-gray-300 rounded-md">
+          <button id="refreshBtn" class="px-3 py-2 bg-blue-600 text-white rounded-md text-sm">Refresh</button>
+        </div>
+      </div>
+
+      <div id="loading" class="text-gray-600">Loading...</div>
+      <div id="empty" class="text-gray-600 hidden">No active guests.</div>
+
+      <div class="bg-white rounded-lg shadow overflow-hidden">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Guest</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Host</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Purpose</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Entry Time</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody" class="divide-y divide-gray-200"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = '/public/active-guests';
+    const tableBody = document.getElementById('tableBody');
+    const loading = document.getElementById('loading');
+    const empty = document.getElementById('empty');
+    const searchInput = document.getElementById('search');
+
+    const fetchActiveGuests = async () => {
+      loading.classList.remove('hidden');
+      empty.classList.add('hidden');
+      tableBody.innerHTML = '';
+
+      const params = new URLSearchParams();
+      if (searchInput.value.trim()) params.set('search', searchInput.value.trim());
+
+      const response = await fetch(`${API_URL}?${params.toString()}`);
+      const data = await response.json();
+      const rows = data.data || [];
+
+      loading.classList.add('hidden');
+
+      if (!rows.length) {
+        empty.classList.remove('hidden');
+        return;
+      }
+
+      rows.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="px-4 py-3 text-sm text-gray-900">${row.guest_name || 'N/A'}</td>
+          <td class="px-4 py-3 text-sm text-gray-700">${row.host_name || 'N/A'}</td>
+          <td class="px-4 py-3 text-sm text-gray-700">${row.visit_purpose || 'N/A'}</td>
+          <td class="px-4 py-3 text-sm text-gray-700">${row.entry_time ? new Date(row.entry_time).toLocaleString() : 'N/A'}</td>
+        `;
+        tableBody.appendChild(tr);
+      });
+    };
+
+    document.getElementById('refreshBtn').addEventListener('click', fetchActiveGuests);
+    searchInput.addEventListener('input', () => {
+      clearTimeout(window._searchTimer);
+      window._searchTimer = setTimeout(fetchActiveGuests, 300);
+    });
+
+    fetchActiveGuests();
+  </script>
+</body>
+</html>

@@ -5,7 +5,6 @@ module.exports = {
       testEnvironment: 'node',
       testMatch: ['<rootDir>/tests/integration/**/*.test.js', '<rootDir>/tests/unit/**/*.test.js', '<rootDir>/tests/smoke.test.js'],
       setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
-      teardownFilesAfterEnv: ['<rootDir>/tests/teardown.js'],
     },
     {
       displayName: 'frontend',
@@ -30,5 +29,6 @@ module.exports = {
   },
   verbose: true,
   testTimeout: 10000,
-  maxWorkers: 1
+  maxWorkers: 1,
+  globalTeardown: '<rootDir>/tests/teardown.js'
 };

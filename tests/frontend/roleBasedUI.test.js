@@ -449,13 +449,15 @@ describe('Role-Based UI Rendering', () => {
       const hostDash = createRoleBasedUI('Host');
 
       const guestForm = guestDash.querySelector('#visit-request-form-section');
+      const guestHostRequests = guestDash.querySelector('#pending-requests-section');
       const hostRequests = hostDash.querySelector('#pending-requests-section');
+      const hostGuestForm = hostDash.querySelector('#visit-request-form-section');
 
       expect(guestForm).toBeTruthy();
-      expect(hostRequests).toBeFalsy();
+      expect(guestHostRequests).toBeFalsy();
 
       expect(hostRequests).toBeTruthy();
-      expect(guestForm).toBeFalsy();
+      expect(hostGuestForm).toBeFalsy();
     });
 
     test('should maintain separate UI state for different roles', () => {

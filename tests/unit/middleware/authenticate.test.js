@@ -252,7 +252,7 @@ describe('authenticate middleware', () => {
 
       authenticate(mockReq, mockRes, mockNext);
 
-      expect(jwt.verify).toHaveBeenCalledWith('    valid_token', expect.any(String));
+      expect(jwt.verify).toHaveBeenCalledWith('   valid_token', expect.any(String));
     });
 
     test('should handle empty cookie', () => {

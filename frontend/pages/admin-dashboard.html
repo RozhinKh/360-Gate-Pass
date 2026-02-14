@@ -346,9 +346,12 @@
             <h1 class="text-2xl font-bold text-gray-900">360GatePass</h1>
             <span class="text-gray-500 text-sm">Admin Dashboard</span>
           </div>
-          <button id="logoutBtn" class="text-gray-600 hover:text-gray-900 text-sm font-medium transition">
-            Logout
-          </button>
+          <div class="flex items-center gap-4">
+            <a href="/active-guests.html" class="text-blue-600 hover:text-blue-700 text-sm font-medium">Public Active Guests</a>
+            <button id="logoutBtn" class="text-gray-600 hover:text-gray-900 text-sm font-medium transition">
+              Logout
+            </button>
+          </div>
         </div>
       </div>
     </nav>
@@ -367,7 +370,7 @@
       </div>
 
       <!-- Statistics Cards Section -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-8">
         <!-- Total Users -->
         <div class="stat-card">
           <div class="stat-value" id="totalUserCount">-</div>
@@ -390,6 +393,18 @@
         <div class="stat-card">
           <div class="stat-value" id="activeGuestCount">-</div>
           <div class="stat-label">Active Guests</div>
+        </div>
+
+        <!-- Visits in Last 7 Days -->
+        <div class="stat-card">
+          <div class="stat-value" id="dailyVisitCount">-</div>
+          <div class="stat-label">Visits (7d)</div>
+        </div>
+
+        <!-- Visits in Last 8 Weeks -->
+        <div class="stat-card">
+          <div class="stat-value" id="weeklyVisitCount">-</div>
+          <div class="stat-label">Visits (8w)</div>
         </div>
       </div>
 
@@ -497,6 +512,10 @@
   <script>
     // API Base URL
     const API_BASE = '/api';
+    const getAuthHeaders = () => {
+      const token = sessionStorage.getItem('token');
+      return token ? { 'Authorization': `Bearer ${token}` } : {};
+    };
 
     // State management
     let currentUser = null;
@@ -535,9 +554,9 @@
       try {
         const response = await fetch(`${API_BASE}/auth/me`, {
           method: 'GET',
-          credentials: 'include',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            ...getAuthHeaders()
           }
         });
 
@@ -576,9 +595,9 @@
 
         const response = await fetch(`${API_BASE}/admin/users`, {
           method: 'GET',
-          credentials: 'include',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            ...getAuthHeaders()
           }
         });
 
@@ -614,9 +633,9 @@
       try {
         const response = await fetch(`${API_BASE}/admin/reports`, {
           method: 'GET',
-          credentials: 'include',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            ...getAuthHeaders()
           }
         });
 
@@ -660,6 +679,14 @@
 
       // Update active guests count
       document.getElementById('activeGuestCount').textContent = statistics.activeGuests?.count || 0;
+
+      // Update trend aggregates
+      const daily = statistics.visitTrends?.daily || [];
+      const weekly = statistics.visitTrends?.weekly || [];
+      const sevenDayTotal = daily.reduce((sum, item) => sum + (item.count || 0), 0);
+      const eightWeekTotal = weekly.reduce((sum, item) => sum + (item.count || 0), 0);
+      document.getElementById('dailyVisitCount').textContent = sevenDayTotal;
+      document.getElementById('weeklyVisitCount').textContent = eightWeekTotal;
     };
 
     /**
@@ -855,9 +882,9 @@
       try {
         const response = await fetch(`${API_BASE}/admin/users/${user.id}/role`, {
           method: 'PATCH',
-          credentials: 'include',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            ...getAuthHeaders()
           },
           body: JSON.stringify({ role: newRole })
         });
@@ -975,17 +1002,15 @@
      */
     const handleLogout = async () => {
       try {
-        await fetch(`${API_BASE}/auth/logout`, {
-          method: 'POST',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
+        // Avoid clearing other tabs by not touching shared cookies
       } catch (error) {
         console.error('Logout error:', error);
       } finally {
-        // Always redirect to login
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('userId');
+        sessionStorage.removeItem('userRole');
+        sessionStorage.removeItem('userName');
+        sessionStorage.removeItem('userEmail');
         window.location.href = 'login.html';
       }
     };

@@ -51,7 +51,7 @@ describe('Authentication Workflow Integration Tests', () => {
       expect(response.body).toHaveProperty('user');
       expect(response.body).toHaveProperty('token');
       expect(response.body.user.email).toBe(userData.email);
-      expect(response.body.user.firstName).toBe(userData.firstName);
+      expect(response.body.user.first_name).toBe(userData.firstName);
       expect(response.body.user.role).toBe('Guest'); // default role
     });
 

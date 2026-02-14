@@ -25,13 +25,18 @@
  * // Allow both Admin and Host roles
  * app.put('/api/visits/:id/approve', authenticate, requireRole(['Admin', 'Host']), controller);
  */
-const requireRole = (allowedRoles) => {
+const requireRole = (...allowedRolesInput) => {
+  const allowedRoles =
+    allowedRolesInput.length === 1 && Array.isArray(allowedRolesInput[0])
+      ? allowedRolesInput[0]
+      : allowedRolesInput;
+
   return (req, res, next) => {
     // Validate that authentication middleware has run (req.user should be populated)
     if (!req.user) {
       return res.status(401).json({
         error: 'Unauthorized',
-        message: 'Authentication required'
+        message: 'User not authenticated'
       });
     }
 
