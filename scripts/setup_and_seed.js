@@ -49,30 +49,6 @@ const usersToSeed = [
     last_name: 'User',
     role: 'Admin',
     phone: '09120000004'
-  },
-  {
-    email: 'REDACTED',
-    password: '1234',
-    first_name: 'User',
-    last_name: 'One',
-    role: 'Guest',
-    phone: '09120000005'
-  },
-  {
-    email: 'REDACTED',
-    password: '1234',
-    first_name: 'User',
-    last_name: 'One',
-    role: 'Admin',
-    phone: '09120000006'
-  },
-  {
-    email: 'REDACTED',
-    password: '1234',
-    first_name: 'User',
-    last_name: 'One',
-    role: 'Host',
-    phone: '09120000007'
   }
 ];
 

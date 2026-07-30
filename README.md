@@ -42,11 +42,10 @@ http://localhost:3000
 
 ## Demo Login Credentials
 
-Password for all accounts: `1234`
-
-- Guest: `REDACTED`
-- Host: `REDACTED`
-- Admin: `REDACTED`
+- Guest: `guest@example.com` / `Guest1234`
+- Host: `host@example.com` / `Host1234`
+- Security: `security@example.com` / `Security1234`
+- Admin: `admin@example.com` / `Admin1234`
 
 ## Database Schema
 
