@@ -1,7 +1,5 @@
 # 360-Gate-Pass
 
-> Mini full-stack app built as a school project to practice JWT auth, role-based access control, and API testing. Not production software.
-
 360GatePass is a web-based system built with Node.js, Express, and PostgreSQL to streamline and automate the management of entry requests, approvals, and guest tracking for organizations, providing transparent, traceable, and secure access control.
 
 ## Prerequisites
